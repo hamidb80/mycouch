@@ -20,18 +20,12 @@ func parse(exp: NimNode): NimNode =
       }
     of "<", "<=", ">=", ">", "==", "!=", "~=", "in", "notin", "is", "mod":
       case op:
-      of "<":
-        op = "$lt"
-      of "<=":
-        op = "$lte"
-      of ">=":
-        op = "$gte"
-      of ">":
-        op = "$gt"
-      of "==":
-        op = "$eq"
-      of "!=":
-        op = "$ne"
+      of "<": op = "$lt"
+      of "<=": op = "$lte"
+      of ">=": op = "$gte"
+      of ">": op = "$gt"
+      of "==": op = "$eq"
+      of "!=": op = "$ne"
 
       of "~=":
         # TODO regex
@@ -49,10 +43,7 @@ func parse(exp: NimNode): NimNode =
         let strRepr = br2.repr
         var temp =
           case strRepr:
-          of "object": "object"
-          of "array": "array"
-          of "string": "string"
-          of "number": "number"
+          of "object", "array", "string", "number": strRepr
           of "nil": "null"
           of "bool": "boolean"
           else: ""
