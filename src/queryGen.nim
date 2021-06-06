@@ -152,36 +152,3 @@ macro mango*(expList: untyped): JsonNode =
     "limit": `limit`,
     "skip": `skip`,
   }
-
-
-#[ sample
-
-  mango:
-    query:
-      @name == "hamid" and @year notin [1399]
-
-    fields:
-      ["name", "stars"]
-
-    sort: ...
-    skip: ...
-    limit: ...
-
-  -------------------------------------
-
-  {
-    "selector" : {
-      "$and": {
-        "name": {
-          "$eq": "hamid"
-        },
-        "year": {
-          "$nin": [1399]
-        }
-      }
-    },
-
-    fields: ["name", "stars"]
-
-  }
-]#
