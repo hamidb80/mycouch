@@ -1,6 +1,6 @@
 import
   macros, macroutils,
-  json, strformat
+  json, strformat, strutils, sequtils
 
 func parse(exp: NimNode): NimNode =
   case exp.kind:
@@ -64,8 +64,10 @@ func parse(exp: NimNode): NimNode =
     doAssert br1.kind == nnkPrefix
     doAssert br1[0].strVal == "@"
 
+    #TODO: support dyanmic field name
+
     return superQuote: {
-      `br1[1].strVal`: {
+      `br1[1].parse`: {
         `op`: `br2.parse`
       }
     }
@@ -113,6 +115,16 @@ func parse(exp: NimNode): NimNode =
     # $keyMapMatch
   of nnkPar:
     return exp[0].parse
+  of nnkAccQuoted:
+    #[
+      AccQuoted
+        Ident "friend"
+        Ident "."
+        Ident "name"
+      
+      => "friend.name"
+    ]#
+    return (exp.mapIt it.strVal).join 
   else:
     return exp
 
