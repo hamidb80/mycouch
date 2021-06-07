@@ -18,48 +18,48 @@ func parse(exp: NimNode): NimNode =
       return quote: {
         `op`: [`br1`, `br2`]
       }
-    of "<", "<=", ">=", ">", "==", "!=", "~=", "in", "notin", "is", "mod":
-      case op:
-      of "<": op = "$lt"
-      of "<=": op = "$lte"
-      of ">=": op = "$gte"
-      of ">": op = "$gt"
-      of "==": op = "$eq"
-      of "!=": op = "$ne"
 
-      of "~=":
-        # TODO regex
-        op = "$regex"
+    of "<": op = "$lt"
+    of "<=": op = "$lte"
+    of ">=": op = "$gte"
+    of ">": op = "$gt"
+    of "==": op = "$eq"
+    of "!=": op = "$ne"
 
-      of "in":
-        # TODO assert following type is openArray or bracket
-        op = "$in"
-      of "notin":
-        op = "$nin"
+    of "~=":
+      # TODO regex
+      op = "$regex"
 
-      of "is":
-        op = "$type"
+    of "in":
+      # TODO assert following type is openArray or bracket
+      op = "$in"
+    of "notin":
+      op = "$nin"
 
-        let strRepr = br2.repr
-        var temp =
-          case strRepr:
-          of "object", "array", "string", "number": strRepr
-          of "nil": "null"
-          of "bool": "boolean"
-          else: ""
+    of "is":
+      op = "$type"
 
-        if temp != "":
-          br2 = newStrLitNode temp
+      let strRepr = br2.repr
+      var temp =
+        case strRepr:
+        of "object", "array", "string", "number": strRepr
+        of "nil": "null"
+        of "bool": "boolean"
+        else: ""
 
-        #TODO assert that ident is stringy type
+      if temp != "":
+        br2 = newStrLitNode temp
 
-      of "mod":
-        op = "$mod"
+      #TODO assert that ident is stringy type
 
-        if br2.kind == nnkBracket:
-          doAssert br2.len == 2, "mod shoud be like [Divisor, Remainder]"
+    of "mod":
+      op = "$mod"
 
-        #TODO: assert ident type is openarray
+      if br2.kind == nnkBracket:
+        doAssert br2.len == 2, "mod shoud be like [Divisor, Remainder]"
+
+      #TODO: assert ident type is openarray
+    else: raise newException(ValueError, fmt"infix '{op}' is not defiend")
 
     doAssert br1.kind == nnkPrefix
     doAssert br1[0].strVal == "@"
@@ -111,35 +111,37 @@ func parse(exp: NimNode): NimNode =
     # $elemMatch
     # $allMatch
     # $keyMapMatch
-
   of nnkPar:
     return exp[0].parse
-  
   else:
     return exp
 
-macro mango*(expList: untyped): JsonNode =
-  var 
-    selector = quote: %*{"_id" : {"$gt": nil}}
-    fields = quote: []
-    skip, limit = quote: 0
+template PS*(exp: untyped): untyped = parseSelector(exp)
+macro parseSelector*(exp: untyped): JsonNode =
+  var target =
+   if exp.kind == nnkStmtList: exp[0]
+   else: exp
 
-  for exp in expList:
-    doAssert exp.kind == nnkCall
+  return
+    if target.kind == nnkNilLit: quote: %*{"_id" : {"$gt": nil}}
+    else: superQuote: %* `target.parse`
 
-    let
-      key = exp[0].strVal
-      valExp = exp[1][0]
+type sortObj* = tuple[field:string, order: string]
+func `%`(so: sortObj): JsonNode=
+  % [so.field, so.order]
 
-    case key:
-    of "query": selector = valExp.parse
-    of "fields": fields = valExp
-    of "skip": skip = valExp
-    of "limit": limit = valExp
-    
-  superQuote: %* {
-    "selector": `selector`,
-    "fields": `fields`,
-    "limit": `limit`,
-    "skip": `skip`,
+func MangoQuery*(
+  selector: JsonNode,
+  fields:  seq[string],
+  sort: seq[sortObj] = @[],
+  limit: Natural = 25,
+  skip: Natural = 0,
+  execution_stats: bool = false
+): JsonNode =
+  %* {
+    "selector": selector,
+    "fields": fields,
+    "sort": sort,
+    "limit": limit,
+    "execution_stats": execution_stats,
   }
