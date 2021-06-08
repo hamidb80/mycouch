@@ -1,5 +1,5 @@
 import
-  macros, macroutils, sugar,
+  macros, macroutils,
   json, strformat, strutils, sequtils
 
 
@@ -26,6 +26,8 @@ func parseIdent(exp: NimNode): NimNode=
   else:
     raise newException(ValueError, fmt"unexpected NimNode '{exp.kind}' as an ident")
 
+#TODO: add type assersions
+
 func parse(exp: NimNode): NimNode =
   case exp.kind:
   of nnkInfix:
@@ -40,26 +42,17 @@ func parse(exp: NimNode): NimNode =
     of "and", "or":
       op = "$" & op # $and , $or
       return superQuote: {
-        `op`: [`br1.parse`, `br2.parse`] #FIXME
+        `op`: [`br1.parse`, `br2.parse`]
       }
-
     of "<": op = "$lt"
     of "<=": op = "$lte"
     of ">=": op = "$gte"
     of ">": op = "$gt"
     of "==": op = "$eq"
     of "!=": op = "$ne"
-
-    of "=~":
-      # TODO regex
-      op = "$regex"
-
-    of "in":
-      # TODO type assertion
-      op = "$in"
-    of "notin":
-      op = "$nin"
-
+    of "=~": op = "$regex"
+    of "in": op = "$in"
+    of "notin": op = "$nin"
     of "is":
       op = "$type"
 
@@ -73,17 +66,13 @@ func parse(exp: NimNode): NimNode =
 
       if temp != "":
         br2 = newStrLitNode temp
-
-      #TODO assert that ident is stringy type
-
     of "mod":
       op = "$mod"
 
       if br2.kind == nnkBracket:
         doAssert br2.len == 2, "mod shoud be like [Divisor, Remainder]"
-
-      #TODO: assert ident type is openarray
-    else: raise newException(ValueError, fmt"infix '{op}' is not defiend")
+    else: 
+      raise newException(ValueError, fmt"infix '{op}' is not defiend")
 
     return superQuote: {
       `br1.parseIdent`: {
@@ -107,40 +96,44 @@ func parse(exp: NimNode): NimNode =
           "$exists": `op` == "??"
         }
       }
-      
     else: 
       error fmt"prefix {op} is not defiend"
-
   of nnkCall:
     if exp[0].kind == nnkDotExpr:
-      assert exp[0][0].kind == nnkPrefix
 
       let 
-        field = exp[0][0][1].strVal 
-        fn = exp[0][1].strVal
-        parameter = 
-          if exp.len == 2: exp[1]
-          else: nil
-
+        firstParam = exp[0][0]
+        fn = exp[0][1].strVal # function
+        otherParams = exp[1..^1]
+      
       case fn:
       of "size":
-        return quote: {
-          `field`: {
-            "$size": `parameter`
+        return superQuote: {
+          `firstParam.parseIdent`: {
+            "$size": `otherParams[0]`
+          }
+        }
+      of "nor":
+        return superQuote: {
+          "$nor": [`firstParam.parse`, `otherParams[0].parse`]
+        }
+      of "all":
+        return superQuote: {
+          `firstParam.parseIdent`: {
+            "$all": `otherParams[0]`
+          }
+        }
+      of "elemMatch", "allMatch", "keyMapMatch": #FIXME i don't know, maybe they want some specialixations
+        let vfn = "$" & fn 
+        return superQuote: {
+          `firstParam.parseIdent`: {
+            `vfn`: `otherParams[0].parse`
           }
         }
       else: 
         error fmt"function {fn} is not defined"
-
-    # TODO:
-    # nor
-    # $all
-    # $elemMatch
-    # $allMatch
-    # $keyMapMatch
   of nnkPar:
     return exp[0].parse
-  
   else:
     return exp
 
