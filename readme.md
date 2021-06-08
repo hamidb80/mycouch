@@ -40,8 +40,8 @@ PS:
 
   @year mod [4,2]             # modular | $mod
 
-  @year in    [2020, 2021]    # modular | $mod
-  @year notin [2020, 2021]    # modular | $mod
+  @year in    [2020, 2021]    # in | $in
+  @year notin [2020, 2021]    # not in | $nin
 
   ?? @genre or ?! @genre      # ??: exists, ?! is not exists | $exists
   
