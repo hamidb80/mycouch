@@ -1,13 +1,37 @@
 import
-  macros, macroutils,
+  macros, macroutils, sugar,
   json, strformat, strutils, sequtils
+
+
+func parseIdent(exp: NimNode): NimNode=
+  if exp.kind == nnkPrefix:
+    assert exp[0].strVal == "@"
+
+    if exp[1].kind == nnkAccQuoted:
+      #[
+        AccQuoted
+          Ident "friend"
+          Ident "."
+          Ident "name"
+        
+        => "friend.name"
+      ]#
+      return (exp[1].mapIt it.strVal).join.newStrLitNode
+    else:
+      return exp[1].strVal.newStrLitNode
+
+  elif exp.kind == nnkIdent:
+    return exp
+  
+  else:
+    raise newException(ValueError, fmt"unexpected NimNode '{exp.kind}' as an ident")
 
 func parse(exp: NimNode): NimNode =
   case exp.kind:
   of nnkInfix:
     var
       op = exp[0].strVal  # operator
-      br1 = parse exp[1] # branch1
+      br1 = exp[1] # branch1
       br2 =
         if exp.len == 3: parse exp[2]
         else: newEmptyNode()
@@ -15,8 +39,8 @@ func parse(exp: NimNode): NimNode =
     case op:
     of "and", "or":
       op = "$" & op # $and , $or
-      return quote: {
-        `op`: [`br1`, `br2`]
+      return superQuote: {
+        `op`: [`br1.parse`, `br2.parse`] #FIXME
       }
 
     of "<": op = "$lt"
@@ -26,12 +50,12 @@ func parse(exp: NimNode): NimNode =
     of "==": op = "$eq"
     of "!=": op = "$ne"
 
-    of "~=":
+    of "=~":
       # TODO regex
       op = "$regex"
 
     of "in":
-      # TODO assert following type is openArray or bracket
+      # TODO type assertion
       op = "$in"
     of "notin":
       op = "$nin"
@@ -61,32 +85,32 @@ func parse(exp: NimNode): NimNode =
       #TODO: assert ident type is openarray
     else: raise newException(ValueError, fmt"infix '{op}' is not defiend")
 
-    doAssert br1.kind == nnkPrefix
-    doAssert br1[0].strVal == "@"
-
-    #TODO: support dyanmic field name
-
     return superQuote: {
-      `br1[1].parse`: {
+      `br1.parseIdent`: {
         `op`: `br2.parse`
       }
     }
   of nnkPrefix:
     let op = exp[0].strVal
 
-    if op == "@": return exp
-    elif op == "not": 
+    case op:
+    of "@": 
+      return exp.parseIdent 
+    of "not": 
       return superQuote: {
         "$not": `exp[1].parse`
       }
-    elif op notin ["?=", "?!"]: error fmt"prefix {op} is not defiend"
-
-    let field = exp[1][1].strVal
-    return quote: {
-      `field`: {
-        "$exists": `op` == "?="
+    of "??", "?!": 
+      let field  = exp[1].parseIdent
+      return quote: {
+        `field`: {
+          "$exists": `op` == "??"
+        }
       }
-    }
+      
+    else: 
+      error fmt"prefix {op} is not defiend"
+
   of nnkCall:
     if exp[0].kind == nnkDotExpr:
       assert exp[0][0].kind == nnkPrefix
@@ -109,30 +133,22 @@ func parse(exp: NimNode): NimNode =
         error fmt"function {fn} is not defined"
 
     # TODO:
+    # nor
     # $all
     # $elemMatch
     # $allMatch
     # $keyMapMatch
   of nnkPar:
     return exp[0].parse
-  of nnkAccQuoted:
-    #[
-      AccQuoted
-        Ident "friend"
-        Ident "."
-        Ident "name"
-      
-      => "friend.name"
-    ]#
-    return (exp.mapIt it.strVal).join 
+  
   else:
     return exp
 
-template PS*(exp: untyped): untyped = parseSelector(exp)
-macro parseSelector*(exp: untyped): JsonNode =
+template PS*(body: untyped): untyped = parseSelector(body)
+macro parseSelector*(body: untyped): JsonNode =
   var target =
-   if exp.kind == nnkStmtList: exp[0]
-   else: exp
+   if body.kind == nnkStmtList: body[0]
+   else: body
 
   return
     if target.kind == nnkNilLit: quote: %*{"_id" : {"$gt": nil}}
@@ -142,7 +158,7 @@ type sortObj* = tuple[field:string, order: string]
 func `%`(so: sortObj): JsonNode=
   % [so.field, so.order]
 
-func MangoQuery*(
+func mango*(
   selector: JsonNode,
   fields:  seq[string],
   sort: seq[sortObj] = @[],
