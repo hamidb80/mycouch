@@ -7,13 +7,13 @@ let
   # pat = re".*ali"
   bad_year = 1399
   name = "namesVar"
-  # myType = "string"
+  myType = "string"
 
 # var q = PS(@`friend.name` == "ali")
 var q = PS:
   # @`friend.name` == "ali" 
-  # name == "hamid"
   # @year != bad_year
+  # name == "hamid"
   
   # @name =~ "ali"
   # @name =~ pat.pattern
@@ -23,7 +23,7 @@ var q = PS:
   # ?? @genre or ?! @genre
   
   # @year is myType
-  @year is number
+  @year is number # object, array, string, number, nil, bool
 
   # @list.size(3)
   # @list.all(["hamid", "ali"])
