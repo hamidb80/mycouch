@@ -3,11 +3,12 @@
 
 ## mango query lang:
   ```nim
-    mango:
-      query: @name == "hamid" and @year notin [1399]
+    mango(
+      query: PS(@name == "hamid" and @year notin [1399])
       fields: ["name", "stars"]
+    )
   ```
-
+  converts to +>
   ```json
     {
       "selector" : {
@@ -26,22 +27,32 @@
 
 ### Usage:
 
+#### parse selector:
 ```nim
-mango:
-  @`friend.name` == "ali" 
-  @year != bad_year
-  name == "hamid"
+PS:
+  comparisions < <= == != >= >
+  @year < bad_year            # year is a field
+  name == "hamid"             # notice: name is a var name
+  @`friend.name` == "ali"     # nested field
 
-  @name =~ "ali"
-  @name =~ pat.pattern
+  @name =~ "ali"              # regex match | $regex
+  @name =~ pat.pattern        # ""
+
+  @year mod [4,2]             # modular | $mod
+
+  @year in    [2020, 2021]    # modular | $mod
+  @year notin [2020, 2021]    # modular | $mod
+
+  ?? @genre or ?! @genre      # ??: exists, ?! is not exists | $exists
   
-  @year mod [4,2]
-  ?? @genre or ?! @genre
+  @year is myType             # is for type spesification | $type
+  @year is number               # object, array, string, number, nil, bool
 
-  @year is myType
-  @year is number # object, array, string, number, nil, bool
-  @list.size(3)
-  @list.all(["hamid", "ali"])
+  @list.size(3)               # match array len | $size
+  @list.all(["hamid", "ali"]) # all function same for elemMatch, allMatch, keyMapMatch functions | $all 
+
+  and or not | $and $or $not
   not (@artist == "mohammadAli" and (@genre notin ["pop", "rock"] or @artist == "iman khodaee"))
-  (@field == 3 and @date == 12).nor(@field == 4)
+  (@field == 3 and @date == 12).nor(@field == 4) # since nim doesnt have 'nor' operator | $nor
+
 ```
