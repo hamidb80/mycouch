@@ -52,7 +52,9 @@ PS:
   @year in    [2020, 2021]    # in | $in
   @year notin [2020, 2021]    # not in | $nin
 
-  ?? @genre or ?! @genre      # ??: exists, ?! is not exists | $exists
+  ?= @genre or ?! @genre      # ?=: exists, ?! is not exists | $exists
+  
+  ? @genre or ! @genre        # ?: ==true, !: ==false
   
   @year is myType             # is for type spesification | $type
   @year is number               # object, array, string, number, nil, bool

@@ -31,7 +31,10 @@ suite "parse selector":
     checkPJ @field in [2020, 2021], {"field": {"$in": [2020, 2021]}}
     checkPJ @field notin [2020, 2021], {"field": {"$nin": [2020, 2021]}}
 
-    checkPJ ( ?? @field), {"field": {"$exists": true}}
+    checkPJ ( ? @field), {"field": {"$eq": true}}
+    checkPJ ( ! @field), {"field": {"$eq": false}}
+
+    checkPJ ( ?= @field), {"field": {"$exists": true}}
     checkPJ ( ?! @field), {"field": {"$exists": false}}
 
     checkPJ @field is number, {"field": {"$type": "number"}}

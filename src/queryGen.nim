@@ -3,7 +3,7 @@ import
   json, strformat, strutils, sequtils
 
 
-func parseIdent(exp: NimNode): NimNode=
+func parseIdent(exp: NimNode): NimNode =
   if exp.kind == nnkPrefix:
     assert exp[0].strVal == "@"
 
@@ -22,7 +22,7 @@ func parseIdent(exp: NimNode): NimNode=
 
   elif exp.kind == nnkIdent:
     return exp
-  
+
   else:
     raise newException(ValueError, fmt"unexpected NimNode '{exp.kind}' as an ident")
 
@@ -32,8 +32,8 @@ func parse(exp: NimNode): NimNode =
   case exp.kind:
   of nnkInfix:
     var
-      op = exp[0].strVal  # operator
-      br1 = exp[1] # branch1
+      op = exp[0].strVal # operator
+      br1 = exp[1]       # branch1
       br2 =
         if exp.len == 3: parse exp[2]
         else: newEmptyNode()
@@ -71,7 +71,7 @@ func parse(exp: NimNode): NimNode =
 
       if br2.kind == nnkBracket:
         doAssert br2.len == 2, "mod shoud be like [Divisor, Remainder]"
-    else: 
+    else:
       raise newException(ValueError, fmt"infix '{op}' is not defiend")
 
     return superQuote: {
@@ -83,29 +83,37 @@ func parse(exp: NimNode): NimNode =
     let op = exp[0].strVal
 
     case op:
-    of "@": 
-      return exp.parseIdent 
-    of "not": 
+    of "@":
+      return exp.parseIdent
+    of "not":
       return superQuote: {
         "$not": `exp[1].parse`
       }
-    of "??", "?!": 
-      let field  = exp[1].parseIdent
-      return quote: {
-        `field`: {
-          "$exists": `op` == "??"
+    of "?", "!", "?=", "?!":
+      let field = exp[1].parseIdent
+
+      if op.len == 2:
+        return quote: {
+          `field`: {
+            "$exists": `op` == "?="
+          }
         }
-      }
-    else: 
+      else:
+        return quote: {
+          `field`: {
+            "$eq": `op` == "?"
+          }
+        }
+    else:
       error fmt"prefix {op} is not defiend"
   of nnkCall:
     if exp[0].kind == nnkDotExpr:
 
-      let 
+      let
         firstParam = exp[0][0]
         fn = exp[0][1].strVal # function
         otherParams = exp[1..^1]
-      
+
       case fn:
       of "size":
         return superQuote: {
@@ -124,13 +132,13 @@ func parse(exp: NimNode): NimNode =
           }
         }
       of "elemMatch", "allMatch", "keyMapMatch": #FIXME i don't know, maybe they want some specialixations
-        let vfn = "$" & fn 
+        let vfn = "$" & fn
         return superQuote: {
           `firstParam.parseIdent`: {
             `vfn`: `otherParams[0].parse`
           }
         }
-      else: 
+      else:
         error fmt"function {fn} is not defined"
   of nnkPar:
     return exp[0].parse
@@ -140,20 +148,20 @@ func parse(exp: NimNode): NimNode =
 template PS*(body: untyped): untyped = parseSelector(body)
 macro parseSelector*(body: untyped): JsonNode =
   var target =
-   if body.kind == nnkStmtList: body[0]
+    if body.kind == nnkStmtList: body[0]
    else: body
 
   return
-    if target.kind == nnkNilLit: quote: %*{"_id" : {"$gt": nil}}
+      if target.kind == nnkNilLit: quote: %*{"_id": {"$gt": nil}}
     else: superQuote: %* `target.parse`
 
-type sortObj* = tuple[field:string, order: string]
-func `%`(so: sortObj): JsonNode=
+type sortObj* = tuple[field: string, order: string]
+func `%`(so: sortObj): JsonNode =
   % [so.field, so.order]
 
 func mango*(
   selector: JsonNode,
-  fields:  seq[string],
+  fields: seq[string],
   sort: seq[sortObj] = @[],
   limit: Natural = 25,
   skip: Natural = 0,
