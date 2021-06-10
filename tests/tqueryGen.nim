@@ -1,40 +1,84 @@
-import json
+import unittest, json
 import queryGen
 
-# import nre, macros
+template checkPJ(query, json: untyped): untyped = # checkPsOverJson
+  check PS(query) == ( %* json)
 
-let 
-  # pat = re".*ali"
-  bad_year = 1399
-  name = "namesVar"
-  myType = "string"
+suite "parse selector":
+  test "comparition":
+    checkPJ @year < 10, {"year": {"$lt": 10}}
+    checkPJ @year <= 10, {"year": {"$lte": 10}}
+    checkPJ @year == 10, {"year": {"$eq": 10}}
+    checkPJ @year != 10, {"year": {"$ne": 10}}
+    checkPJ @year >= 10, {"year": {"$gte": 10}}
+    checkPJ @year > 10, {"year": {"$gt": 10}}
 
-# var q = PS(@`friend.name` == "ali")
-var q = PS:
-  # comparisions < <= == != >= >
-  # @year < bad_year            # year is a field
-  # name == "hamid"             # notice: name is a var name
-  # @`friend.name` == "ali"     # nested field
+  test "field variant":
+    let field = "fieldName"
+    checkPJ field == true, {field: {"$eq": true}}
+    checkPJ @`field.subField` == false, {"field.subField": {"$eq": false}}
 
-  # @name =~ "ali"              # regex match | $regex
-  # @name =~ pat.pattern        # ""
+  test "value variant":
+    let value = "someValue"
+    checkPJ @field == "someValue", {"field": {"$eq": "someValue"}}
+    checkPJ @field == value, {"field": {"$eq": value}}
 
-  # @year mod [4,2]             # modular | $mod
+  test "custom operators":
+    checkPJ @field =~ "ali", {"field": {"$regex": "ali"}}
 
-  # @year in    [2020, 2021]    # in | $in
-  # @year notin [2020, 2021]    # not in | $nin
+    checkPJ @field mod [4, 2], {"field": {"$mod": [4, 2]}}
 
-  # ?? @genre or ?! @genre      # ??: exists, ?! is not exists | $exists
+    checkPJ @field in [2020, 2021], {"field": {"$in": [2020, 2021]}}
+    checkPJ @field notin [2020, 2021], {"field": {"$nin": [2020, 2021]}}
+
+    checkPJ ( ?? @field), {"field": {"$exists": true}}
+    checkPJ ( ?! @field), {"field": {"$exists": false}}
+
+    checkPJ @field is number, {"field": {"$type": "number"}}
+    checkPJ @field is bool, {"field": {"$type": "boolean"}}
+    checkPJ @field is string, {"field": {"$type": "string"}}
+    checkPJ @field is object, {"field": {"$type": "object"}}
+    checkPJ @field is array, {"field": {"$type": "array"}}
+    checkPJ @field is nil, {"field": {"$type": "null"}}
+    let myType = "other"
+    checkPJ @field is myType, {"field": {"$type": "other"}}
+
+  test "functions":
+    let value = 4
+    checkPJ @field.size(3), {"field": {"$size": 3}} # by literal
+    checkPJ @field.size(value), {"field": {"$size": value}} # by value
+
+    checkPJ @field.all(["v1", "v2"]), {"field": {"$all": ["v1", "v2"]}}
+    checkPJ @field.keyMapMatch(["v1", "v2"]), {"field": {"$keyMapMatch": ["v1", "v2"]}}
+    checkPJ @field.allMatch(["v1", "v2"]), {"field": {"$allMatch": ["v1", "v2"]}}
+    checkPJ @field.elemMatch(["v1", "v2"]), {"field": {"$elemMatch": ["v1", "v2"]}}
+
+    checkPJ (@field1 == 1).nor(@field2 == 2), {"$nor": [
+      {"field1": {"$eq": 1}},
+      {"field2": {"$eq": 2}}
+    ]}
+
+  test "combinational operators":
+    checkPJ not(@field == true), {"$not": {"field": {"$eq": true}}}
+    checkPJ @field1 == 1 or @field2 == 2, {"$or": [
+      {"field1": {"$eq": 1}},
+      {"field2": {"$eq": 2}}
+    ]}
+
+    checkPJ @field1 == 1 and @field2 == 2, {"$and": [
+      {"field1": {"$eq": 1}},
+      {"field2": {"$eq": 2}}
+    ]}
   
-  # @year is myType             # is for type spesification | $type
-  # @year is number               # object, array, string, number, nil, bool
-
-  # @list.size(3)               # match array len | $size
-  # @list.all(["hamid", "ali"]) # all function same for elemMatch, allMatch, keyMapMatch functions | $all 
-
-  # and or not | $and $or $not
-  # not (@artist == "mohammadAli" and (@genre notin ["pop", "rock"] or @artist == "iman khodaee"))
-  
-  # (@field == 3 and @date == 12).nor(@field == 4) # since nim doesnt have 'nor' operator | $nor
-
-echo q.pretty
+  test "nested":
+    checkPJ(
+      not (@artist != "YAS" and (@genre notin ["rap", "rock"] or @artist == "Hamed")),
+      {"$not": {
+        "$and": [
+          {"artist": {"$ne":"YAS"}},
+          {"$or":[
+              {"genre": {"$nin":["rap", "rock"]}},
+              {"artist": {"$eq":"Hamed"}},
+          ]}
+        ]
+      }})
