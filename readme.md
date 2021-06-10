@@ -32,7 +32,7 @@ you can put the query im 2 ways: [`PS` is an alias for `parseSelector`]
 
 - `PS( <query>  )`
 - 
-  ```nim
+  ```
   PS:
     <query>
   ```
