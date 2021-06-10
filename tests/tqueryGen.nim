@@ -5,7 +5,7 @@ template checkPJ(query, json: untyped): untyped = # checkPsOverJson
   check PS(query) == ( %* json)
 
 suite "parse selector":
-  test "comparition":
+  test "commmon comparition":
     checkPJ @year < 10, {"year": {"$lt": 10}}
     checkPJ @year <= 10, {"year": {"$lte": 10}}
     checkPJ @year == 10, {"year": {"$eq": 10}}
@@ -53,13 +53,14 @@ suite "parse selector":
     checkPJ @field.allMatch(["v1", "v2"]), {"field": {"$allMatch": ["v1", "v2"]}}
     checkPJ @field.elemMatch(["v1", "v2"]), {"field": {"$elemMatch": ["v1", "v2"]}}
 
+  test "combinational operators":
+    checkPJ not(@field == true), {"$not": {"field": {"$eq": true}}}
+
     checkPJ (@field1 == 1).nor(@field2 == 2), {"$nor": [
       {"field1": {"$eq": 1}},
       {"field2": {"$eq": 2}}
     ]}
 
-  test "combinational operators":
-    checkPJ not(@field == true), {"$not": {"field": {"$eq": true}}}
     checkPJ @field1 == 1 or @field2 == 2, {"$or": [
       {"field1": {"$eq": 1}},
       {"field2": {"$eq": 2}}
@@ -72,14 +73,13 @@ suite "parse selector":
 
   test "nested":
     checkPJ(
-      not(@artist != "YAS" and (@genre notin ["rap", "rock"] or @artist ==
-          "Hamed")),
+      not(@a != 1 and (@b notin ["2", 3] or @c == false)),
       {"$not": {
         "$and": [
-          {"artist": {"$ne": "YAS"}},
+          {"a": {"$ne": 1}},
           {"$or": [
-              {"genre": {"$nin": ["rap", "rock"]}},
-              {"artist": {"$eq": "Hamed"}},
+              {"b": {"$nin": ["2", 3]}},
+              {"c": {"$eq": false}},
           ]}
         ]
       }})
