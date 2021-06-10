@@ -69,16 +69,17 @@ suite "parse selector":
       {"field1": {"$eq": 1}},
       {"field2": {"$eq": 2}}
     ]}
-  
+
   test "nested":
     checkPJ(
-      not (@artist != "YAS" and (@genre notin ["rap", "rock"] or @artist == "Hamed")),
+      not(@artist != "YAS" and (@genre notin ["rap", "rock"] or @artist ==
+          "Hamed")),
       {"$not": {
         "$and": [
-          {"artist": {"$ne":"YAS"}},
-          {"$or":[
-              {"genre": {"$nin":["rap", "rock"]}},
-              {"artist": {"$eq":"Hamed"}},
+          {"artist": {"$ne": "YAS"}},
+          {"$or": [
+              {"genre": {"$nin": ["rap", "rock"]}},
+              {"artist": {"$eq": "Hamed"}},
           ]}
         ]
       }})
