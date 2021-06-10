@@ -28,9 +28,18 @@
 ### Usage:
 
 #### parse selector:
+you can put the query im 2 ways: [`PS` is an alias for `parseSelector`]
+
+- `PS( <query>  )`
+- 
+  ```nim
+  PS:
+    <query>
+  ```
+
 ```nim
 PS:
-  comparisions < <= == != >= >
+  # comparisions < <= == != >= >
   @year < bad_year            # year is a field
   name == "hamid"             # notice: name is a var name
   @`friend.name` == "ali"     # nested field
@@ -51,7 +60,7 @@ PS:
   @list.size(3)               # match array len | $size
   @list.all(["hamid", "ali"]) # all function same for elemMatch, allMatch, keyMapMatch functions | $all 
 
-  and or not | $and $or $not
+  # or not | $and $or $not
   not (@artist == "mohammadAli" and (@genre notin ["pop", "rock"] or @artist == "iman khodaee"))
   (@field == 3 and @date == 12).nor(@field == 4) # since nim doesnt have 'nor' operator | $nor
 
