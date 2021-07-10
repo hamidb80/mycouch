@@ -1,6 +1,6 @@
 import
-  httpclient,
-  json, tables, strformat
+  httpclient, uri,
+  json, tables, sugar, strformat
 
 type
   CouchDBClient* = object
@@ -30,6 +30,43 @@ proc login*(self; name, pass: string) =
   #  if stores like this: @["AuthSession=<CODE>; Version=N; Expires=<WEEK_DAY>, <DATE> GMT; Max-Age=600; Path=/; HttpOnly"]
   self.hc.headers.table["Cookie"] = resp.headers.table["set-cookie"]
 
+# ----------------------------------------------------------------------
+
+proc serverInfo*(self; ): JsonNode =
+  ## https://docs.couchdb.org/en/stable/api/server/common.html#api-server-root
+  let req = self.hc.get(fmt"{self.baseUrl}/")
+
+  doAssert req.code == Http200
+  return req.body.parseJson
+
+proc activeTasks*(self; ): JsonNode =
+  ## https://docs.couchdb.org/en/latest/api/server/common.html#active-tasks
+  let req = self.hc.get(fmt"{self.baseUrl}/_active_tasks/")
+
+  doAssert req.code == Http200 # or 401
+  return req.body.parseJson
+
+# TODO add 'captureDefault' macro to detect unnecessary arguments and save them as a
+# const tuple inside the function called defaults - eg. const default = (limit=0, skip=-1,...) 
+# TODO add 'add if is not default' macro to add only necessary arguments
+
+
+proc allDBs*(self; descending = false, limit = -1, skip = 0, startkey = newJObject(),
+    endKey = newJObject()): JsonNode =
+  ## https://docs.couchdb.org/en/latest/api/server/common.html#all-dbs
+
+  let req = self.hc.get(fmt"{self.baseUrl}/_all_dbs/?" &
+  encodeQuery({
+    "descending": $descending,
+    "limit": $limit, # optional
+    "skip": $skip,
+    "startKey": $startkey,
+    "endKey": $endKey,
+  }))
+
+  doAssert req.code == Http200
+  return req.body.parseJson
+
 # -----------------------------------------------------------------
 
 proc find*(self; dbName: string; mangoQuery: JsonNode): JsonNode =
@@ -47,7 +84,6 @@ proc createDoc*(self; dbName: string; doc: JsonNode): JsonNode =
   let resp = self.hc.post(fmt"{self.baseUrl}/{dbName}/", $doc)
 
   assert resp.code == Http201
-
   resp.body.parseJson
 
 proc updateDoc*(self; dbName: string; doc: JsonNode): JsonNode =
