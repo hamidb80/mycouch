@@ -1,5 +1,5 @@
 import unittest, json
-import queryGen
+import mycouch/queryGen
 
 template checkPJ(query, json: untyped): untyped = # checkPsOverJson
   check PS(query) == ( %* json)

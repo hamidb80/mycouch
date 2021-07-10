@@ -40,6 +40,7 @@ func parse(exp: NimNode): NimNode =
 
     case op:
     of "and", "or":
+      # TODO flattenDeepInfix
       op = "$" & op # $and , $or
       return superQuote: {
         `op`: [`br1.parse`, `br2.parse`]

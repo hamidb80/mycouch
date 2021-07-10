@@ -1,5 +1,5 @@
 import json
-import mycouch, queryGen
+import mycouch, mycouch/queryGen
 
 when isMainModule:
   let cdb = newCouchDBClient()
