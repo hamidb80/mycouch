@@ -1,5 +1,5 @@
-import 
-  httpclient, 
+import
+  httpclient,
   json, tables, strformat
 
 type
@@ -12,8 +12,9 @@ using
 
 # initiate -----------------------------------------------
 
-proc newCouchDBClient*(host: string = "http://localhost",
-    port = 5984): CouchDBClient =
+# TODO: add doc uri in doc of every api
+
+proc newCouchDBClient*(host: string = "http://localhost", port = 5984): CouchDBClient =
   let client = newHttpClient()
   client.headers = newHttpHeaders({"Content-Type": "application/json"})
 
@@ -49,7 +50,7 @@ proc createDoc*(self; dbName: string; doc: JsonNode): JsonNode =
 
   resp.body.parseJson
 
-proc updateDoc*(self; dbName: string; doc: JsonNode):JsonNode =
+proc updateDoc*(self; dbName: string; doc: JsonNode): JsonNode =
   assert (doc.hasKey "_id") and (doc.hasKey "_rev"), "doc must have '_id' & '_rev'"
 
   let resp = self.hc.put(fmt"{self.baseUrl}/{dbName}/", $doc)
@@ -57,7 +58,7 @@ proc updateDoc*(self; dbName: string; doc: JsonNode):JsonNode =
 
   resp.body.parseJson
 
-proc deleteDoc*(self; dbName: string; id, rev:string):JsonNode =
+proc deleteDoc*(self; dbName: string; id, rev: string): JsonNode =
   let resp = self.hc.delete(fmt"{self.baseUrl}/{dbName}/{id}?rev={rev}")
 
   assert resp.code == Http200
@@ -71,7 +72,7 @@ proc bulkInsert*(self; dbName: string; docs: openArray[JsonNode]): JsonNode =
 
   resp.body.parseJson
 
-proc bulkUpdate*(self; dbName: string; docs: openArray[JsonNode]):JsonNode =
+proc bulkUpdate*(self; dbName: string; docs: openArray[JsonNode]): JsonNode =
   # assert (doc.hasKey "_id") and (doc.hasKey "_rev"), "doc must have '_id' & '_rev'"
 
   let resp = self.hc.put(fmt"{self.baseUrl}/{dbName}/", $docs)
