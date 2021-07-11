@@ -1,6 +1,8 @@
 import
   httpclient, uri,
-  json, tables, sugar, strformat
+  json, tables, strformat, sequtils
+
+import ./private/utils
 
 type
   CouchDBClient* = object
@@ -46,23 +48,20 @@ proc activeTasks*(self; ): JsonNode =
   doAssert req.code == Http200 # or 401
   return req.body.parseJson
 
-# TODO add 'captureDefault' macro to detect unnecessary arguments and save them as a
-# const tuple inside the function called defaults - eg. const default = (limit=0, skip=-1,...) 
-# TODO add 'add if is not default' macro to add only necessary arguments
-
-
 proc allDBs*(self; descending = false, limit = -1, skip = 0, startkey = newJObject(),
-    endKey = newJObject()): JsonNode =
+    endKey = newJObject()): JsonNode {.captureDefaults.}=
   ## https://docs.couchdb.org/en/latest/api/server/common.html#all-dbs
 
-  let req = self.hc.get(fmt"{self.baseUrl}/_all_dbs/?" &
-  encodeQuery({
-    "descending": $descending,
-    "limit": $limit, # optional
-    "skip": $skip,
-    "startKey": $startkey,
-    "endKey": $endKey,
-  }))
+  var queryParams: seq[DoubleStrTuple] 
+  addIfIsNotDefault(queryParams, [
+    (skip, defaults.skip, $skip),
+    (descending, defaults.descending, $descending),
+    (limit, defaults.limit, $limit), 
+    (startKey, defaults.startKey, $startkey), 
+    (endKey, defaults.endKey, $endKey)
+  ])
+
+  let req = self.hc.get(fmt"{self.baseUrl}/_all_dbs/?" & encodeQuery(queryParams))
 
   doAssert req.code == Http200
   return req.body.parseJson

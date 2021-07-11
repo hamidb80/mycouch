@@ -15,6 +15,7 @@ when false:
       Ident "mahdi"
     Ident "reza"
 
+# TODO import it from macroplus
 func flattenDeepInfix*(nestedInfix: NimNode, infixIdent: string): NimNode =
   ## return a statement list of idents
   doAssert nestedInfix.kind == nnkInfix

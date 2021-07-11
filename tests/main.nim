@@ -9,3 +9,5 @@ when isMainModule:
     selector= PS(@artist == "mohammadAli"),
     fields= @["artist", "genre"],
   )).pretty
+
+  echo cdb.alldbs()

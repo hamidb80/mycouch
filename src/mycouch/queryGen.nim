@@ -150,10 +150,10 @@ template PS*(body: untyped): untyped = parseSelector(body)
 macro parseSelector*(body: untyped): JsonNode =
   var target =
     if body.kind == nnkStmtList: body[0]
-   else: body
+    else: body
 
   return
-      if target.kind == nnkNilLit: quote: %*{"_id": {"$gt": nil}}
+    if target.kind == nnkNilLit: quote: %*{"_id": {"$gt": nil}}
     else: superQuote: %* `target.parse`
 
 type sortObj* = tuple[field: string, order: string]
