@@ -263,8 +263,119 @@ proc changeReshardJobState*(self; jobId, state: string, state_reason = "") {.cap
   let req = self.hc.put(fmt"{self.baseUrl}/_reshard/jobs/{jobId}/state", $ body)
   doAssert req.code == Http200 # 400 or 401
 
-# DATEbASE API ------------------------------------------------------------
+# DATEBASE API ------------------------------------------------------------
 
+proc isDBexists*(self; dbname: string): bool =
+  ## https://docs.couchdb.org/en/latest/api/database/common.html#head--db
+  let req = self.hc.head(fmt"{self.baseUrl}/{dbname}")
+  req.code == Http200
+
+proc getDBinfo*(self; dbname: string): JsonNode =
+  ## https://docs.couchdb.org/en/latest/api/database/common.html#get--db
+  let req = self.hc.get(fmt"{self.baseUrl}/{dbname}")
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc createDB*(self;dbname:string, q, n = -1, partioned= false): JsonNode {.captureDefaults.} =
+  ## https://docs.couchdb.org/en/latest/api/database/common.html#put--db
+  var body = %* {}
+  body.addIfIsNotDefault([q,n, partioned], createDBDefaults)
+
+  let req = self.hc.put(fmt"{self.baseUrl}/{dbname}")
+
+  doAssert req.code in {Http201, Http202}
+  req.body.parseJson
+
+proc deleteDB*(self;dbname:string)=
+  ## https://docs.couchdb.org/en/latest/api/database/common.html#delete--db
+  let req = self.hc.delete(fmt"{self.baseUrl}/{dbname}")
+
+  doAssert req.code in {Http200, Http202}
+
+proc createDoc*(self; dbName: string; doc: JsonNode, batch=""): JsonNode {.captureDefaults.} =
+  ## https://docs.couchdb.org/en/latest/api/database/common.html#post--db
+  var queryParams: seq[DoubleStrTuple]
+  queryParams.addIfIsNotDefault([batch], createDocDefaults)
+  let req = self.hc.post(fmt"{self.baseUrl}/{dbName}/?" & encodeQuery(queryParams), $doc)
+
+  doAssert req.code in {Http201, Http202}
+  req.body.parseJson
+
+proc allDocs*(self; dbName: string): JsonNode =
+  ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-all-docs
+  let req = self.hc.get(fmt"{self.baseUrl}/{dbName}/_all_docs/")
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc allDocsKeys*(self; dbName: string, keys: seq[string]): JsonNode =
+  ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs
+  let req = self.hc.post(fmt"{self.baseUrl}/{dbName}/_all_docs/", $ %*{"keys": keys})
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc designDocs*(self; dbName: string, 
+  conflicts, descending= false,
+  startkey, endkey ="",
+  startkey_docid, endkey_docid = "",
+  include_docs= false,
+  inclusive_end= true,
+  key = "",
+  keys = newseq[string](),
+  limit, skip= 0,
+  update_seq= false,
+): JsonNode {.captureDefaults.}=
+  var queryParams: seq[DoubleStrTuple]
+  queryParams.addIfIsNotDefault([
+    conflicts, descending,
+    startkey, endkey,
+    startkey_docid, endkey_docid,
+    include_docs,
+    inclusive_end,
+    key,
+    limit, skip,
+    update_seq,
+  ], designDocsDefaults)
+  ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-design-docs
+  
+  let 
+    url = fmt"{self.baseUrl}/{dbName}/_design_docs/?" & encodeQuery(queryParams)
+    req = 
+      if keys == designDocsDefaults.keys:
+        self.hc.get(url)
+      else:
+        self.hc.post(url, $ %*{"keys": keys})
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc allDocsQueries*(self; dbName: string, queries: JsonNode): JsonNode =
+  ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs-queries
+  let req = self.hc.post(fmt"{self.baseUrl}/{dbName}/_all_docs/queries", $queries)
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc bulkGet*(self; dbName: string, docs: JsonNode, revs=false): JsonNode {.captureDefaults.} =
+  ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-bulk-get
+  var queryParams: seq[DoubleStrTuple]
+  queryParams.addIfIsNotDefault([revs], bulkGetDefaults)
+  let req = self.hc.post(fmt"{self.baseUrl}/{dbName}/_bulk_get?" & encodeQuery(queryParams), $docs)
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+# DOCUMENTs API ------------------------------------------------------------
+
+# DESIGN DOCUMENTs API ------------------------------------------------------------
+
+# PARTIONED DATABASEs API ------------------------------------------------------------
+
+# LOCAL DOCUMENTs API ------------------------------------------------------------
+
+# -------------------------------------------------------------------------
 # TODO: add doc uri in doc of every api
 proc login*(self; name, pass: string) =
   let resp = self.hc.post(fmt"{self.baseUrl}/_session", $ %*{
@@ -286,12 +397,6 @@ proc getDoc*(self; dbName: string; id: string, rev = "", include_docs: bool = fa
     else: fmt"?rev={rev}"
   ))
   .body.parseJson
-
-proc createDoc*(self; dbName: string; doc: JsonNode): JsonNode =
-  let resp = self.hc.post(fmt"{self.baseUrl}/{dbName}/", $doc)
-
-  doAssert resp.code == Http201
-  resp.body.parseJson
 
 proc updateDoc*(self; dbName: string; doc: JsonNode): JsonNode =
   doAssert (doc.hasKey "_id") and (doc.hasKey "_rev"), "doc must have '_id' & '_rev'"
