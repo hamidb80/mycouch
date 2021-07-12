@@ -1,5 +1,6 @@
 # myCouch
   CouchDB client wrtten in Nim
+  currently it's based on CouchDB `v3.1.1`
 
 ## mango query lang:
   ```nim
@@ -26,6 +27,7 @@
   ```
 
 ### Usage:
+TODO: show api doc link here
 
 #### parse selector:
 you can put the query im 2 ways: [`PS` is an alias for `parseSelector`]

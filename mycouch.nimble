@@ -9,3 +9,4 @@ srcDir        = "src"
 
 requires "nim >= 1.4.8"
 requires "macroutils >= 1.2.0"
+requires "macroplus"
