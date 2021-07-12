@@ -43,10 +43,10 @@ proc allDBs*(self; descending = false, limit = -1, skip = 0, startkey = newJObje
     ("skip", $skip),
   ]
   queryParams.addIfIsNotDefault([
-    (limit, allDBsDefaults.limit, $limit), 
-    (startKey, allDBsDefaults.startKey, $startkey), 
-    (endKey, allDBsDefaults.endKey, $endKey)
-  ])
+    limit,
+    startKey,
+    endKey,
+  ], allDBsDefaults)
 
   let req = self.hc.get(fmt"{self.baseUrl}/_all_dbs/?" & encodeQuery(queryParams))
 
@@ -103,14 +103,13 @@ proc replicate*(self;
     "target": target,
   }
   body.addIfIsNotDefault([
-    (cancel, replicateDefaults.cancel),
-    (continuous, replicateDefaults.continuous),
-    (create_target, replicateDefaults.create_target),
-    (doc_ids, replicateDefaults.doc_ids),
-    (filter, replicateDefaults.filter),
-    (source_proxy, replicateDefaults.source_proxy),
-    (target_proxy, replicateDefaults.target_proxy),
-  ])
+    cancel, 
+    continuous, 
+    create_target,
+    doc_ids,
+    filter,
+    source_proxy, target_proxy,
+  ], replicateDefaults)
   let req = self.hc.post(fmt"{self.baseUrl}/_replicate", $body)
 
   doAssert req.code in {Http200, Http202}

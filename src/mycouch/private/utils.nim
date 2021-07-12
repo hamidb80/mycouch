@@ -47,31 +47,33 @@ macro captureDefaults*(routine): untyped =
   
   return newStmtList(defs, routine)
 
-macro addIfIsNotDefault*(acc: var JsonNode, checks: untyped): untyped =
+macro addIfIsNotDefault*(acc: var JsonNode, checks, defaults): untyped =
   ## checks bracket [ tuple( currentValue[0], defaultValue[1] ) ]
   ## if whatYouWannaReturnIfItwasValid was not there we assume that he wants to return currentValue
   checks.expectKind nnkBracket
+  defaults.expectKind nnkIdent
   result = newstmtlist()
 
   for item in checks.children:
-    item.expectKind nnkTupleConstr
+    item.expectKind nnkIdent
     
     result.add do: superQuote:
-      if `item[0]` != `item[1]`:
-        `acc`[`item[0].strval`] = % `item[0]`
+      if `item` != `defaults`.`item`:
+        `acc`[`item.strval`] = % `item`
 
-macro addIfIsNotDefault*(acc: var seq[DoubleStrTuple], checks: untyped): untyped =
+
+macro addIfIsNotDefault*(acc: var seq[DoubleStrTuple], checks, defaults): untyped =
   ## checks bracket [ tuple( currentValue[0], defaultValue[1], whatYouWannaReturnIfItwasValid[2] ) ]
   ## if whatYouWannaReturnIfItwasValid was not there we assume that he wants to return currentValue
   checks.expectKind nnkBracket
   result = newstmtlist()
 
   for item in checks.children:
-    item.expectKind nnkTupleConstr
+    item.expectKind nnkIdent
     
     result.add do: superQuote:
-      if `item[0]` != `item[1]`:
-        `acc`.add (`item[0].strval`, $ `item[2]`)
+      if `item` != `defaults`.`item`:
+        `acc`.add (`item.strval`, $ `item`)
 
 # TODO move it to the tests
 when isMainModule:
