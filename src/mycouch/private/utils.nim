@@ -47,6 +47,13 @@ macro captureDefaults*(routine): untyped =
   
   return newStmtList(defs, routine)
 
+func getStrName(n: NimNode): string=
+  case n.kind:
+  of nnkident: n.strVal
+  of nnkAccQuoted: n[0].strVal
+  else:
+    raise newException(ValueError, "not allowed")
+
 macro addIfIsNotDefault*(acc: var JsonNode, checks, defaults): untyped =
   ## checks bracket [ tuple( currentValue[0], defaultValue[1] ) ]
   ## if whatYouWannaReturnIfItwasValid was not there we assume that he wants to return currentValue
@@ -55,11 +62,11 @@ macro addIfIsNotDefault*(acc: var JsonNode, checks, defaults): untyped =
   result = newstmtlist()
 
   for item in checks.children:
-    item.expectKind nnkIdent
+    item.expectKind {nnkIdent, nnkAccQuoted}
     
     result.add do: superQuote:
       if `item` != `defaults`.`item`:
-        `acc`[`item.strval`] = % `item`
+        `acc`[`item.getStrName`] = % `item`
 
 
 macro addIfIsNotDefault*(acc: var seq[DoubleStrTuple], checks, defaults): untyped =
@@ -69,17 +76,17 @@ macro addIfIsNotDefault*(acc: var seq[DoubleStrTuple], checks, defaults): untype
   result = newstmtlist()
 
   for item in checks.children:
-    item.expectKind nnkIdent
+    item.expectKind {nnkIdent, nnkAccQuoted}
     
     result.add do: superQuote:
       if `item` != `defaults`.`item`:
-        `acc`.add (`item.strval`, $ `item`)
+        `acc`.add (`item.getStrName`, $ `item`)
 
 # TODO move it to the tests
 when isMainModule:
-  proc hey(a: bool, b = "hello", c = 2) {.captureDefaults.} =
+  proc hey(a: bool, `b` = "hello", c = 2) {.captureDefaults.} =
     var list: seq[DoubleStrTuple]
-    addIfIsNotDefault list, [(b, heydefaults.b, $b), (c, heydefaults.c, "yay")]
+    list.addIfIsNotDefault [`b`, c], heydefaults
 
     echo list
 
