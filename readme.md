@@ -9,7 +9,7 @@
       fields: ["name", "stars"]
     )
   ```
-  converts to +>
+  converts to =>
   ```json
     {
       "selector" : {
@@ -69,3 +69,12 @@ PS:
   (@field == 3 and @date == 12).nor(@field == 4) # since nim doesnt have 'nor' operator | $nor
 
 ```
+
+
+## TODOs
+ - [ ] add doc page
+ - [ ] add test
+
+
+## Notes
+contributions are welcome :D
