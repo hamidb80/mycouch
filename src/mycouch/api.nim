@@ -8,14 +8,26 @@ type
     hc*: HttpClient
     baseUrl*: string
 
+  FeedVariants* = enum
+    FVNormal = "normal"
+    FVLongPoll = "longpoll"
+    FVContinuous = "continuous"
+    FVEventSource = "eventsource"
+
+  BatchVariants* = enum
+    BVNon = ""
+    BVOk = "ok"
+
+
 using
   self: CouchDBClient
   db: string
+  docid: string
 
 # INITIATE -----------------------------------------------
 
 proc newCouchDBClient*(host: string = "http://localhost", port = 5984): CouchDBClient =
-  let client = newHttpClient()
+  var client = newHttpClient()
   client.headers = newHttpHeaders({"Content-Type": "application/json"})
 
   CouchDBClient(hc: client, baseUrl: fmt"{host}:{port}")
@@ -64,11 +76,6 @@ proc DBsInfo*(self; keys: openArray[string]): JsonNode =
 
 # TODO (cluster setup) https://docs.couchdb.org/en/latest/api/server/common.html#cluster-setup
 
-type FeedVariants* = enum
-  FVNormal = "normal"
-  FVLongPoll = "longpoll"
-  FVContinuous = "continuous"
-  FVEventSource = "eventsource"
 proc DBupdates*(self; feed: string, timeout = 60, heartbeat = 60000, since = ""): JsonNode =
   ## https://docs.couchdb.org/en/latest/api/server/common.html#db-updates
   let queryParams = @[
@@ -294,7 +301,7 @@ proc deleteDB*(self;db;)=
 
   doAssert req.code in {Http200, Http202}
 
-proc createDoc*(self,db; doc: JsonNode, batch=""): JsonNode {.captureDefaults.} =
+proc createDoc*(self,db; doc: JsonNode, batch= BVNon): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/database/common.html#post--db
   var queryParams: seq[DoubleStrTuple]
   queryParams.addIfIsNotDefault([batch], createDocDefaults)
@@ -608,6 +615,84 @@ proc setRevsLimit*(self, db; limit: int)=
 
 # DOCUMENTs API ------------------------------------------------------------
 
+proc getDoc*(self, db; docid: string, getInfo= false,
+  attachments,
+  att_encoding_info= false,
+  atts_since= newseq[string](),
+  conflicts,
+  deleted_conflicts = false,
+  latest,
+  local_seq,
+  meta = false,
+  open_revs = newseq[string](),
+  all= false,
+  rev = "",
+  revs,
+  revs_info = false
+): JsonNode {.captureDefaults.} =
+  ## https://docs.couchdb.org/en/latest/api/document/common.html#get--db-docid
+  ## https://docs.couchdb.org/en/latest/api/document/common.html#head--db-docid
+  var queryParams: seq[DoubleStrTuple]
+  queryParams.addIfIsNotDefault([
+    attachments,
+    att_encoding_info,
+    atts_since,
+    conflicts,
+    deleted_conflicts,
+    latest,
+    local_seq,
+    meta,
+    open_revs,
+    rev,
+    revs,
+    revs_info,
+  ], getDocDefaults)
+  
+  if all:
+    queryParams.add ("open_revs", "all")
+
+  let req = self.hc.request(
+    fmt"{self.baseUrl}/{db}/{docid}" & encodeQuery(queryParams),
+    httpMethod = 
+      if getInfo: HttpHead
+      else: HttpPost
+    )
+
+  doAssert req.code.int < 400
+  req.body.parseJson
+
+proc createOrUpdateDoc*(self, db; docid: string, obj: JsonNode): JsonNode=
+  ## https://docs.couchdb.org/en/latest/api/document/common.html#put--db-docid
+  let req = self.hc.put(fmt"{self.baseUrl}/{db}/{docid}", $obj)
+  
+  doAssert req.code in {Http201, Http202}
+  req.body.parseJson
+
+proc deleteDoc*(self, db; docid, rev: string, batch = BVNon, new_edits= false): JsonNode {.captureDefaults.}=
+  ## https://docs.couchdb.org/en/latest/api/document/common.html#delete--db-docid
+  var queryParams : seq[DoubleStrTuple]
+  queryParams.addIfIsNotDefault([batch, new_edits], deleteDocDefaults)
+  let req = self.hc.delete(fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams))
+  
+  doAssert req.code in {Http200, Http202}
+  req.body.parseJson
+
+proc copyDoc*(self, db; docid,destination: string,rev = "", batch = BVNon): JsonNode {.captureDefaults.}=
+  ## https://docs.couchdb.org/en/latest/api/document/common.html#copy--db-docid
+  var queryParams: seq[DoubleStrTuple]
+  queryParams.addIfIsNotDefault([rev, batch], copyDocDefaults)
+
+  # FIXME add destination to the header  
+  let req = self.hc.request(
+    fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams),
+    httpMethod = "COPY"
+  )
+
+  doAssert req.code in {Http201, Http202}
+  req.body.parseJson
+
+## https://docs.couchdb.org/en/latest/api/document/attachments.html#head--db-docid-attname
+
 # DESIGN DOCUMENTs API ------------------------------------------------------------
 
 # PARTIONED DATABASEs API ------------------------------------------------------------
@@ -615,50 +700,14 @@ proc setRevsLimit*(self, db; limit: int)=
 # LOCAL DOCUMENTs API ------------------------------------------------------------
 
 # -------------------------------------------------------------------------
-# TODO: add doc uri in doc of every api
+
 proc login*(self; name, pass: string) =
+  # TODO: add doc uri in doc of every api
+
   let resp = self.hc.post(fmt"{self.baseUrl}/_session", $ %*{
     "name": name, "password": pass
   })
   doAssert resp.code == Http200
   doAssert resp.headers.table.hasKey "set-cookie"
 
-  #  if stores like this: @["AuthSession=<CODE>; Version=N; Expires=<WEEK_DAY>, <DATE> GMT; Max-Age=600; Path=/; HttpOnly"]
   self.hc.headers.table["Cookie"] = resp.headers.table["set-cookie"]
-
-proc getDoc*(self,db; id: string, rev = "", include_docs: bool = false): JsonNode =
-  self.hc.get(fmt"{self.baseUrl}/{db}/{id}" & (
-    if rev == "": ""
-    else: fmt"?rev={rev}"
-  ))
-  .body.parseJson
-
-proc updateDoc*(self,db; doc: JsonNode): JsonNode =
-  doAssert (doc.hasKey "_id") and (doc.hasKey "_rev"), "doc must have '_id' & '_rev'"
-
-  let resp = self.hc.put(fmt"{self.baseUrl}/{db}/", $doc)
-  doAssert resp.code == Http200
-
-  resp.body.parseJson
-
-proc deleteDoc*(self,db; id, rev: string): JsonNode =
-  let resp = self.hc.delete(fmt"{self.baseUrl}/{db}/{id}?rev={rev}")
-
-  doAssert resp.code == Http200
-
-  resp.body.parseJson
-
-proc bulkInsert*(self,db; docs: openArray[JsonNode]): JsonNode =
-  let resp = self.hc.post(fmt"{self.baseUrl}/{db}/", $docs)
-
-  doAssert resp.code == Http201
-
-  resp.body.parseJson
-
-proc bulkUpdate*(self,db; docs: openArray[JsonNode]): JsonNode =
-  # doAssert (doc.hasKey "_id") and (doc.hasKey "_rev"), "doc must have '_id' & '_rev'"
-
-  let resp = self.hc.put(fmt"{self.baseUrl}/{db}/", $docs)
-  doAssert resp.code == Http200
-
-  resp.body.parseJson
