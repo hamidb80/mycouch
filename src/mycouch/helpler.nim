@@ -3,5 +3,7 @@
 import json
 import api
 
-proc getNupdate(self; rev:string, fn: proc(doc:JsonNode): JsonNode): bool=
-  doc
+
+proc getNupdate(self; rev:string, fn: proc(doc:JsonNode): JsonNode): bool
+
+proc bulkDelete(self; docIds: seq[string])

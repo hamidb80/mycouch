@@ -74,6 +74,7 @@ PS:
 ## TODOs
  - [ ] add doc page
  - [ ] add test
+ - [ ] add async
 
 
 ## Notes

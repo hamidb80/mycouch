@@ -10,6 +10,7 @@ type
 
 using
   self: CouchDBClient
+  db: string
 
 # INITIATE -----------------------------------------------
 
@@ -229,7 +230,7 @@ proc reshardJobs*(self; jobId = ""): JsonNode =
   doAssert req.code == Http200 # or 401
   return req.body.parseJson
 
-proc createReshadJob*(self; `type`, db: string, node, `range`, shard, error = "") {.captureDefaults.} =
+proc createReshadJob*(self, db; `type` , node, `range`, shard, error = "") {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/server/common.html#post--_reshard-jobs
   var body = %* {
     "type": `type`,
@@ -265,58 +266,58 @@ proc changeReshardJobState*(self; jobId, state: string, state_reason = "") {.cap
 
 # DATEBASE API ------------------------------------------------------------
 
-proc isDBexists*(self; dbname: string): bool =
+proc isDBexists*(self,db;): bool =
   ## https://docs.couchdb.org/en/latest/api/database/common.html#head--db
-  let req = self.hc.head(fmt"{self.baseUrl}/{dbname}")
+  let req = self.hc.head(fmt"{self.baseUrl}/{db}")
   req.code == Http200
 
-proc getDBinfo*(self; dbname: string): JsonNode =
+proc getDBinfo*(self,db;): JsonNode =
   ## https://docs.couchdb.org/en/latest/api/database/common.html#get--db
-  let req = self.hc.get(fmt"{self.baseUrl}/{dbname}")
+  let req = self.hc.get(fmt"{self.baseUrl}/{db}")
 
   doAssert req.code == Http200
   req.body.parseJson
 
-proc createDB*(self;dbname:string, q, n = -1, partioned= false): JsonNode {.captureDefaults.} =
+proc createDB*(self;db; q, n = -1, partioned= false): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/database/common.html#put--db
   var body = %* {}
   body.addIfIsNotDefault([q,n, partioned], createDBDefaults)
 
-  let req = self.hc.put(fmt"{self.baseUrl}/{dbname}")
+  let req = self.hc.put(fmt"{self.baseUrl}/{db}")
 
   doAssert req.code in {Http201, Http202}
   req.body.parseJson
 
-proc deleteDB*(self;dbname:string)=
+proc deleteDB*(self;db;)=
   ## https://docs.couchdb.org/en/latest/api/database/common.html#delete--db
-  let req = self.hc.delete(fmt"{self.baseUrl}/{dbname}")
+  let req = self.hc.delete(fmt"{self.baseUrl}/{db}")
 
   doAssert req.code in {Http200, Http202}
 
-proc createDoc*(self; dbName: string; doc: JsonNode, batch=""): JsonNode {.captureDefaults.} =
+proc createDoc*(self,db; doc: JsonNode, batch=""): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/database/common.html#post--db
   var queryParams: seq[DoubleStrTuple]
   queryParams.addIfIsNotDefault([batch], createDocDefaults)
-  let req = self.hc.post(fmt"{self.baseUrl}/{dbName}/?" & encodeQuery(queryParams), $doc)
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/?" & encodeQuery(queryParams), $doc)
 
   doAssert req.code in {Http201, Http202}
   req.body.parseJson
 
-proc allDocs*(self; dbName: string): JsonNode =
+proc allDocs*(self,db;): JsonNode =
   ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-all-docs
-  let req = self.hc.get(fmt"{self.baseUrl}/{dbName}/_all_docs/")
+  let req = self.hc.get(fmt"{self.baseUrl}/{db}/_all_docs/")
 
   doAssert req.code == Http200
   req.body.parseJson
 
-proc allDocsKeys*(self; dbName: string, keys: seq[string]): JsonNode =
+proc allDocsKeys*(self,db; keys: seq[string]): JsonNode =
   ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs
-  let req = self.hc.post(fmt"{self.baseUrl}/{dbName}/_all_docs/", $ %*{"keys": keys})
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_all_docs/", $ %*{"keys": keys})
 
   doAssert req.code == Http200
   req.body.parseJson
 
-proc designDocs*(self; dbName: string, 
+proc designDocs*(self,db; 
   conflicts, descending= false,
   startkey, endkey ="",
   startkey_docid, endkey_docid = "",
@@ -341,7 +342,7 @@ proc designDocs*(self; dbName: string,
   ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-design-docs
   
   let 
-    url = fmt"{self.baseUrl}/{dbName}/_design_docs/?" & encodeQuery(queryParams)
+    url = fmt"{self.baseUrl}/{db}/_design_docs/?" & encodeQuery(queryParams)
     req = 
       if keys == designDocsDefaults.keys:
         self.hc.get(url)
@@ -351,21 +352,259 @@ proc designDocs*(self; dbName: string,
   doAssert req.code == Http200
   req.body.parseJson
 
-proc allDocsQueries*(self; dbName: string, queries: JsonNode): JsonNode =
+proc allDocsQueries*(self,db; queries: JsonNode): JsonNode =
   ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs-queries
-  let req = self.hc.post(fmt"{self.baseUrl}/{dbName}/_all_docs/queries", $queries)
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_all_docs/queries", $queries)
 
   doAssert req.code == Http200
   req.body.parseJson
 
-proc bulkGet*(self; dbName: string, docs: JsonNode, revs=false): JsonNode {.captureDefaults.} =
+proc bulkGet*(self,db; docs: JsonNode, revs=false): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-bulk-get
   var queryParams: seq[DoubleStrTuple]
   queryParams.addIfIsNotDefault([revs], bulkGetDefaults)
-  let req = self.hc.post(fmt"{self.baseUrl}/{dbName}/_bulk_get?" & encodeQuery(queryParams), $docs)
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_bulk_get?" & encodeQuery(queryParams), $docs)
 
   doAssert req.code == Http200
   req.body.parseJson
+
+proc bulkDocs*(self, db; docs: JsonNode, new_edits=true): JsonNode {.captureDefaults.} =
+  ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-bulk-docs
+  var body = %* {"docs": docs}
+  body.addIfIsNotDefault [new_edits], bulkDocsDefaults
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_bulk_docs", $body)
+
+  doAssert req.code == Http201
+  req.body.parseJson
+
+proc find*(self,db;
+  selector: JsonNode, 
+  limit=0,
+  skip=0,
+  sort=newJObject(),
+  fields = newseq[string](),
+  use_index = "",
+  use_indexes= newseq[string](),
+  conflicts= false,
+  r=1,
+  bookmark="",
+  update=true,
+  stable=false,
+  execution_stats=false
+): JsonNode {.captureDefaults.} =
+  ## https://docs.couchdb.org/en/latest/api/database/find.html#db-find
+  var body = %{"selector": selector}
+  body.addIfIsNotDefault([
+    limit,
+    skip,
+    sort,
+    fields,
+    conflicts,
+    r,
+    bookmark,
+    update,
+    stable,
+    execution_stats,
+  ], findDefaults)
+  
+  if use_index != "":
+    body["use_index"] = % use_index
+  elif use_indexes.len != 0:
+    body["use_index"] = % use_indexes
+
+  let req=self.hc.post(fmt"{self.baseUrl}/{db}/_find", $body)
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc createIndex*(self,db;
+  index: JsonNode,
+  ddoc,
+  name,
+  `type`="",
+  partitioned= false
+): JsonNode {.captureDefaults.} =
+  ## https://docs.couchdb.org/en/latest/api/database/find.html#db-index
+  var body = %* {}
+  body.addIfIsNotDefault([
+    ddoc, 
+    name, 
+    `type`,
+    partitioned
+  ], createIndexDefaults)
+  
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_index", $body)
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc getIndexes*(self,db): JsonNode=
+  ## https://docs.couchdb.org/en/latest/api/database/find.html#get--db-_index
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_index")
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc deleteIndex*(self, db; designDoc, name: string): JsonNode=
+  ## https://docs.couchdb.org/en/latest/api/database/find.html#delete--db-_index-designdoc-json-name
+  let req = self.hc.delete(fmt"{self.baseUrl}/{db}/_index/{designDoc}/json/{name}")
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc explain*(self, db): JsonNode=
+  let req = self.hc.get(fmt"{self.baseUrl}/{db}/_explain")
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc shards*(self, db): JsonNode=
+  ## https://docs.couchdb.org/en/latest/api/database/shard.html
+  let req = self.hc.get(fmt"{self.baseUrl}/{db}/_shards")
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc shardsDoc*(self, db; docId: string): JsonNode=
+  ## https://docs.couchdb.org/en/latest/api/database/shard.html#db-shards-doc
+  let req = self.hc.get(fmt"{self.baseUrl}/{db}/_shards/{docid}")
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc syncShards*(self, db; docId: string): JsonNode=
+  ## https://docs.couchdb.org/en/latest/api/database/shard.html#db-sync-shards
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_sync_shards")
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc changes*(self, db;
+    handleChanges: proc(data: JsonNode),
+    doc_ids = newseq[string](),
+    conflicts, 
+    descending= false,
+    feed,
+    filter = "",
+    heartbeat=60000,
+    include_docs, 
+    attachments,
+    att_encoding_info = false,
+    `last-event-id` = 0,
+    limit = 1,
+    since=0,
+    style: string,
+    timeout= 60000,
+    view="",
+    seq_interval=0,
+): JsonNode {.captureDefaults.}=
+  ## https://docs.couchdb.org/en/latest/api/database/shard.html#db-sync-shards
+  var queryParams: seq[DoubleStrTuple]
+  queryParams.addIfIsNotDefault([
+    conflicts,
+    descending,
+    feed,
+    filter,
+    heartbeat,
+    include_docs,
+    attachments,
+    att_encoding_info,
+    `last-event-id`,
+    limit,
+    since,
+    timeout,
+    view,
+    seq_interval,
+  ], changesDefaults)
+  
+  let url = fmt"{self.baseUrl}/{db}/_changes?" & encodeQuery(queryParams)
+  let req = 
+    if docids.len != 0:
+      self.hc.post(url, $ %* {"doc_ids": docids})
+    else:
+      self.hc.get(url)
+
+  # FIXME 
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc compact*(self, db): JsonNode=
+  ## https://docs.couchdb.org/en/latest/api/database/compact.html#db-compact
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_compact")
+
+  doAssert req.code == Http202
+  req.body.parseJson
+
+proc compactDesignDoc*(self, db; ddoc:string): JsonNode=
+  ## https://docs.couchdb.org/en/latest/api/database/compact.html#db-compact-design-doc
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_compact/{ddoc}")
+
+  doAssert req.code == Http202
+  req.body.parseJson
+
+proc viewCleanup*(self, db): JsonNode=
+  ## https://docs.couchdb.org/en/latest/api/database/compact.html#db-view-cleanup
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_view_cleanup")
+
+  doAssert req.code == Http202
+  req.body.parseJson
+
+proc getSecurity*(self, db): JsonNode=
+  ## https://docs.couchdb.org/en/latest/api/database/security.html#get--db-_security
+  let req = self.hc.get(fmt"{self.baseUrl}/{db}/_security")
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc setSecurity*(self, db; admins, members: JsonNode): JsonNode=
+  ## https://docs.couchdb.org/en/latest/api/database/security.html#put--db-_security
+  let req = self.hc.put(fmt"{self.baseUrl}/{db}/_security" %* {
+    "admins": admins,
+    "members": members,
+  })
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc purge*(self, db; obj: JsonNode): JsonNode=
+  ## https://docs.couchdb.org/en/latest/api/database/misc.html#db-purge
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_security", $ obj)
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc getPurgedInfosLimit*(self, db): int=
+  ## https://docs.couchdb.org/en/latest/api/database/misc.html#get--db-_purged_infos_limit
+  let req = self.hc.get(fmt"{self.baseUrl}/{db}/_purged_infos_limit")
+
+  doAssert req.code == Http200
+  req.body.parseInt
+
+proc setPurgedInfosLimit*(self, db; limit: int)=
+  ## https://docs.couchdb.org/en/latest/api/database/misc.html#put--db-_purged_infos_limit
+  let req = self.hc.put(fmt"{self.baseUrl}/{db}/_purged_infos_limit", $limit)
+
+  doAssert req.code == Http200
+
+proc revsDiff*(self, db; obj: JsonNode): JsonNode=
+  ## https://docs.couchdb.org/en/latest/api/database/misc.html#db-missing-revs
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_revs_diff", $ obj)
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc getRevsLimit*(self, db): int=
+  ## https://docs.couchdb.org/en/latest/api/database/misc.html#get--db-_revs_limit
+  let req = self.hc.get(fmt"{self.baseUrl}/{db}/_revs_limit")
+
+  doAssert req.code == Http200
+  req.body.parseInt
+
+proc setRevsLimit*(self, db; limit: int)=
+  ## https://docs.couchdb.org/en/latest/api/database/misc.html#put--db-_revs_limit
+  let req = self.hc.put(fmt"{self.baseUrl}/{db}/_revs_limit", $limit)
+
+  doAssert req.code == Http200
 
 # DOCUMENTs API ------------------------------------------------------------
 
@@ -387,43 +626,39 @@ proc login*(self; name, pass: string) =
   #  if stores like this: @["AuthSession=<CODE>; Version=N; Expires=<WEEK_DAY>, <DATE> GMT; Max-Age=600; Path=/; HttpOnly"]
   self.hc.headers.table["Cookie"] = resp.headers.table["set-cookie"]
 
-proc find*(self; dbName: string; mangoQuery: JsonNode): JsonNode =
-  self.hc.post(fmt"{self.baseUrl}/{dbName}/_find", $mangoQuery)
-  .body.parseJson["docs"]
-
-proc getDoc*(self; dbName: string; id: string, rev = "", include_docs: bool = false): JsonNode =
-  self.hc.get(fmt"{self.baseUrl}/{dbName}/{id}" & (
+proc getDoc*(self,db; id: string, rev = "", include_docs: bool = false): JsonNode =
+  self.hc.get(fmt"{self.baseUrl}/{db}/{id}" & (
     if rev == "": ""
     else: fmt"?rev={rev}"
   ))
   .body.parseJson
 
-proc updateDoc*(self; dbName: string; doc: JsonNode): JsonNode =
+proc updateDoc*(self,db; doc: JsonNode): JsonNode =
   doAssert (doc.hasKey "_id") and (doc.hasKey "_rev"), "doc must have '_id' & '_rev'"
 
-  let resp = self.hc.put(fmt"{self.baseUrl}/{dbName}/", $doc)
+  let resp = self.hc.put(fmt"{self.baseUrl}/{db}/", $doc)
   doAssert resp.code == Http200
 
   resp.body.parseJson
 
-proc deleteDoc*(self; dbName: string; id, rev: string): JsonNode =
-  let resp = self.hc.delete(fmt"{self.baseUrl}/{dbName}/{id}?rev={rev}")
+proc deleteDoc*(self,db; id, rev: string): JsonNode =
+  let resp = self.hc.delete(fmt"{self.baseUrl}/{db}/{id}?rev={rev}")
 
   doAssert resp.code == Http200
 
   resp.body.parseJson
 
-proc bulkInsert*(self; dbName: string; docs: openArray[JsonNode]): JsonNode =
-  let resp = self.hc.post(fmt"{self.baseUrl}/{dbName}/", $docs)
+proc bulkInsert*(self,db; docs: openArray[JsonNode]): JsonNode =
+  let resp = self.hc.post(fmt"{self.baseUrl}/{db}/", $docs)
 
   doAssert resp.code == Http201
 
   resp.body.parseJson
 
-proc bulkUpdate*(self; dbName: string; docs: openArray[JsonNode]): JsonNode =
+proc bulkUpdate*(self,db; docs: openArray[JsonNode]): JsonNode =
   # doAssert (doc.hasKey "_id") and (doc.hasKey "_rev"), "doc must have '_id' & '_rev'"
 
-  let resp = self.hc.put(fmt"{self.baseUrl}/{dbName}/", $docs)
+  let resp = self.hc.put(fmt"{self.baseUrl}/{db}/", $docs)
   doAssert resp.code == Http200
 
   resp.body.parseJson
