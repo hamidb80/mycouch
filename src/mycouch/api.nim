@@ -558,7 +558,7 @@ proc getSecurity*(self, db): JsonNode=
 
 proc setSecurity*(self, db; admins, members: JsonNode): JsonNode=
   ## https://docs.couchdb.org/en/latest/api/database/security.html#put--db-_security
-  let req = self.hc.put(fmt"{self.baseUrl}/{db}/_security" %* {
+  let req = self.hc.put(fmt"{self.baseUrl}/{db}/_security", $ %* {
     "admins": admins,
     "members": members,
   })
