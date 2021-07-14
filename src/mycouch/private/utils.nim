@@ -54,6 +54,7 @@ func getStrName(n: NimNode): string=
   else:
     raise newException(ValueError, "not allowed")
 
+
 macro addIfIsNotDefault*(acc: var JsonNode, checks, defaults): untyped =
   ## checks bracket [ tuple( currentValue[0], defaultValue[1] ) ]
   ## if whatYouWannaReturnIfItwasValid was not there we assume that he wants to return currentValue
@@ -68,7 +69,6 @@ macro addIfIsNotDefault*(acc: var JsonNode, checks, defaults): untyped =
       if `item` != `defaults`.`item`:
         `acc`[`item.getStrName`] = % `item`
 
-
 macro addIfIsNotDefault*(acc: var seq[DoubleStrTuple], checks, defaults): untyped =
   ## checks bracket [ tuple( currentValue[0], defaultValue[1], whatYouWannaReturnIfItwasValid[2] ) ]
   ## if whatYouWannaReturnIfItwasValid was not there we assume that he wants to return currentValue
@@ -81,6 +81,13 @@ macro addIfIsNotDefault*(acc: var seq[DoubleStrTuple], checks, defaults): untype
     result.add do: superQuote:
       if `item` != `defaults`.`item`:
         `acc`.add (`item.getStrName`, $ `item`)
+
+
+template createNadd*(data, checks, default): untyped=
+  block:
+    var res = data
+    res.addIfIsNotDefault(checks, default)
+    res
 
 # TODO move it to the tests
 when isMainModule:
