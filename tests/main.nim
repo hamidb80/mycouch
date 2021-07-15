@@ -12,4 +12,4 @@ when isMainModule:
   echo cdb.getDoc("movie", "6832dc85678d4d03ee2f41b4490010f9").pretty
   echo cdb.getCurrentSession.pretty
   echo cdb.alldbs()
-  echo cdb.allDocs("movie").pretty
+  echo cdb.allDocsKeys("movie").pretty
