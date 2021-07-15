@@ -387,7 +387,7 @@ proc allDocs*(self, db): JsonNode =
   doAssert req.code == Http200
   req.body.parseJson
 
-proc allDocsKeys*(self, db; keys: seq[string]): JsonNode =
+proc allDocs*(self, db; keys: seq[string]): JsonNode =
   ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs
   let req = self.hc.post(fmt"{self.baseUrl}/{db}/_all_docs/", $ %*{"keys": keys})
 
@@ -428,7 +428,7 @@ proc designDocs*(self, db;
   doAssert req.code == Http200
   req.body.parseJson
 
-proc allDocsQueries*(self, db; queries: JsonNode): JsonNode =
+proc allDocs*(self, db; queries: JsonNode): JsonNode =
   ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs-queries
   let req = self.hc.post(fmt"{self.baseUrl}/{db}/_all_docs/queries", $queries)
 
@@ -929,7 +929,7 @@ proc getView*(self, db, ddoc, view;
 
   req.body.parseJson
 
-proc getViewQueries*(self, db, ddoc, view; queries: JsonNode): JsonNode =
+proc getView*(self, db, ddoc, view; queries: JsonNode): JsonNode =
   ## https://docs.couchdb.org/en/stable/api/ddoc/views.html#get--db-_design-ddoc-_view-view
   let req = self.hc.post(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_view/{view}", $ %* {"queries": queries})
   doAssert req.code == Http200
