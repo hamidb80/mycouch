@@ -1,6 +1,6 @@
 import
   httpclient, uri,
-  json, tables, strformat, strutils
+  json, tables, strformat, strutils, sequtils
 import ./private/utils
 
 type
@@ -74,7 +74,7 @@ proc allDBs*(self;
   skip = 0,
   startkey,
   endKey = newJObject()
-): JsonNode {.captureDefaults.} =
+): seq[string] {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/server/common.html#all-dbs
 
   var queryParams = @[
@@ -89,7 +89,7 @@ proc allDBs*(self;
   let req = self.hc.get(fmt"{self.baseUrl}/_all_dbs/?" & encodeQuery(queryParams))
 
   doAssert req.code == Http200
-  return req.body.parseJson
+  return req.body.parseJson.mapIt $it
 
 proc DBsInfo*(self; keys: openArray[string]): JsonNode =
   ## https://docs.couchdb.org/en/latest/api/server/common.html#dbs-info
@@ -301,10 +301,10 @@ proc getCurrentSession*(self): JsonNode =
   doAssert req.code == Http200 # or 401
   return req.body.parseJson
 
-proc cookieAuthenticate*(self; username, password: string): JsonNode =
+proc cookieAuthenticate*(self; name, password: string): JsonNode =
   ## https://docs.couchdb.org/en/latest/api/server/authn.html#post--_session
   let req = self.hc.post(fmt"{self.baseUrl}/_session", $ %* {
-    "name": username,
+    "name": name,
     "password": password
   })
 
