@@ -59,7 +59,7 @@ macro addIfIsNotDefault*(acc: var JsonNode, checks, defaults): untyped =
   ## checks bracket [ tuple( currentValue[0], defaultValue[1] ) ]
   ## if whatYouWannaReturnIfItwasValid was not there we assume that he wants to return currentValue
   checks.expectKind nnkBracket
-  defaults.expectKind nnkIdent
+  defaults.expectKind {nnkIdent, nnkSym}
   result = newstmtlist()
 
   for item in checks.children:

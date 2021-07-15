@@ -1,7 +1,7 @@
 import
   macros, macroutils,
   json, strformat, strutils, sequtils
-
+import ./private/utils
 
 func parseIdent(exp: NimNode): NimNode =
   if exp.kind == nnkPrefix:
@@ -160,18 +160,33 @@ type sortObj* = tuple[field: string, order: string]
 func `%`(so: sortObj): JsonNode =
   % [so.field, so.order]
 
-func mango*(
+proc mango*(
   selector: JsonNode,
-  fields: seq[string],
-  sort: seq[sortObj] = @[],
+  fields = newseq[string](),
+  sort= newseq[sortObj](),
   limit: Natural = 25,
   skip: Natural = 0,
+  use_index: string= "",
+  use_indexes = newseq[string](),
+  conflicts= false,
+  r: Natural = 1,
+  bookmark="null",
+  update=true,
+  stable=false,
   execution_stats: bool = false
-): JsonNode =
-  %* {
+): JsonNode {.captureDefaults.} =
+  (%*{
     "selector": selector,
-    "fields": fields,
-    "sort": sort,
-    "limit": limit,
-    "execution_stats": execution_stats,
-  }
+  }).createNadd([
+    fields,
+    sort,
+    limit,
+    skip,
+    use_index,
+    conflicts,
+    r,
+    bookmark,
+    update,
+    stable,
+    execution_stats,
+  ], mangoDefaults)

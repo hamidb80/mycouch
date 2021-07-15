@@ -3,11 +3,13 @@ import mycouch, mycouch/queryGen
 
 when isMainModule:
   let cdb = newCouchDBClient()
-  cdb.login "admin", "admin"
+  discard cdb.cookieAuthenticate("admin", "admin")
 
   echo cdb.find("movie", mango(
     selector= PS(@artist == "mohammadAli"),
-    fields= @["artist", "genre"],
   )).pretty
 
+  echo cdb.getDoc("movie", "6832dc85678d4d03ee2f41b4490010f9").pretty
+  echo cdb.getCurrentSession.pretty
   echo cdb.alldbs()
+  echo cdb.allDocs("movie").pretty
