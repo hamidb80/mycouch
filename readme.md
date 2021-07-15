@@ -2,6 +2,8 @@
   CouchDB client wrtten in Nim
   currently it's based on CouchDB `v3.1.1`
 
+  **note:** deprecated APIs are not included
+
 ## mango query lang:
   ```nim
     mango(
@@ -69,7 +71,6 @@ PS:
   (@field == 3 and @date == 12).nor(@field == 4) # since nim doesnt have 'nor' operator | $nor
 
 ```
-
 
 ## TODOs
  - [ ] add doc page

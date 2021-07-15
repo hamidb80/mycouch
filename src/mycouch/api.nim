@@ -34,7 +34,8 @@ using
   section: string
 
 
-proc changeHeaders(lastHeaders: HttpHeaders, changedData: openArray[tuple[k: string, v: string]]): HttpHeaders =
+proc changeHeaders(lastHeaders: HttpHeaders, changedData: openArray[tuple[
+    k: string, v: string]]): HttpHeaders =
   result.deepcopy lastHeaders
 
   for (k, v) in changedData:
@@ -42,7 +43,8 @@ proc changeHeaders(lastHeaders: HttpHeaders, changedData: openArray[tuple[k: str
 
 # INITIATE -----------------------------------------------
 
-proc newCouchDBClient*(host: string = "http://localhost", port = 5984): CouchDBClient =
+proc newCouchDBClient*(host: string = "http://localhost",
+    port = 5984): CouchDBClient =
   var client = newHttpClient()
   client.headers = newHttpHeaders({"Content-Type": "application/json"})
 
@@ -64,7 +66,8 @@ proc activeTasks*(self): JsonNode =
   doAssert req.code == Http200 # or 401
   return req.body.parseJson
 
-proc allDBs*(self; descending = false, limit, skip = 0, startkey, endKey = newJObject()): JsonNode {.captureDefaults.} =
+proc allDBs*(self; descending = false, limit, skip = 0, startkey,
+    endKey = newJObject()): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/server/common.html#all-dbs
 
   var queryParams = @[
@@ -91,7 +94,8 @@ proc DBsInfo*(self; keys: openArray[string]): JsonNode =
 
 # TODO (cluster setup) https://docs.couchdb.org/en/latest/api/server/common.html#cluster-setup
 
-proc DBupdates*(self; feed: string, timeout = 60, heartbeat = 60000, since = ""): JsonNode =
+proc DBupdates*(self; feed: string, timeout = 60, heartbeat = 60000,
+    since = ""): JsonNode =
   ## https://docs.couchdb.org/en/latest/api/server/common.html#db-updates
   let queryParams = @[
     ("feed", feed),
@@ -151,7 +155,8 @@ proc schedulerJobs*(self; limit, skip = 0): JsonNode {.captureDefaults.} =
   doAssert req.code == Http200 # or 401
   return req.body.parseJson
 
-proc schedulerDocs*(self; replicatorDB, doc_id = "", limit, skip = 0, ): JsonNode {.captureDefaults.} =
+proc schedulerDocs*(self; replicatorDB, doc_id = "", limit, skip = 0,
+    ): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/server/common.html#scheduler-docs
   ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_scheduler-docs-replicator_db
   let url =
@@ -233,7 +238,8 @@ proc reshardState*(self): JsonNode =
 type ReshardStates* = enum
   stopped = "stopped"
   running = "running"
-proc changeReshardState*(self; state: string, state_reason = "") {.captureDefaults.} =
+proc changeReshardState*(self; state: string,
+    state_reason = "") {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/server/common.html#put--_reshard-state
 
   var body = (%*{"state": state}).createNadd([state_reason], changeReshardStateDefaults)
@@ -249,7 +255,8 @@ proc reshardJobs*(self; jobId = ""): JsonNode =
   doAssert req.code == Http200 # or 401
   return req.body.parseJson
 
-proc createReshadJob*(self, db; `type`, node, `range`, shard, error = "") {.captureDefaults.} =
+proc createReshadJob*(self, db; `type`, node, `range`, shard,
+    error = "") {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/server/common.html#post--_reshard-jobs
   var body = ( %* {
     "type": `type`,
@@ -273,7 +280,8 @@ proc reshadJobState*(self; jobId: string): JsonNode =
 
   req.body.parseJson
 
-proc changeReshardJobState*(self; jobId, state: string, state_reason = "") {.captureDefaults.} =
+proc changeReshardJobState*(self; jobId, state: string,
+    state_reason = "") {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/server/common.html#put--_reshard-state
 
   var body = ( %* {"state": state}).createNadd([state_reason], changeReshardStateDefaults)
@@ -328,9 +336,11 @@ proc getNodeSetionKeyConfig*(self, node, section; key: string): JsonNode =
 
   doAssert req.code == Http200 # or 401
 
-proc updateNodeSetionKeyConfig*(self, node, section; key: string, newval: auto) =
+proc updateNodeSetionKeyConfig*(self, node, section; key: string,
+    newval: auto) =
   ## https://docs.couchdb.org/en/stable/api/server/configuration.html#get--_node-node-name-_config-section-key
-  let req = self.hc.put(fmt"{self.baseUrl}/_node/{node}/_config/{section}/{key}", $ % newval)
+  let req = self.hc.put(fmt"{self.baseUrl}/_node/{node}/_config/{section}/{key}",
+      $ % newval)
   doAssert req.code == Http200 # or 401
 
 proc deleteNodeSetionKeyConfig*(self, node, section; key: string) =
@@ -372,7 +382,8 @@ proc deleteDB*(self, db) =
 
   doAssert req.code in {Http200, Http202}
 
-proc createDoc*(self, db; doc: JsonNode, batch = BVNon): JsonNode {.captureDefaults.} =
+proc createDoc*(self, db; doc: JsonNode,
+    batch = BVNon): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/database/common.html#post--db
   var queryParams = newseq[DoubleStrTuple]().createNadd([batch], createDocDefaults)
   let req = self.hc.post(fmt"{self.baseUrl}/{db}/?" & encodeQuery(queryParams), $doc)
@@ -438,12 +449,14 @@ proc allDocs*(self, db; queries: JsonNode): JsonNode =
 proc bulkGet*(self, db; docs: JsonNode, revs = false): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-bulk-get
   var queryParams = newseq[DoubleStrTuple]().createNadd([revs], bulkGetDefaults)
-  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_bulk_get?" & encodeQuery(queryParams), $docs)
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_bulk_get?" & encodeQuery(
+      queryParams), $docs)
 
   doAssert req.code == Http200
   req.body.parseJson
 
-proc bulkDocs*(self, db; docs: JsonNode, new_edits = true): JsonNode {.captureDefaults.} =
+proc bulkDocs*(self, db; docs: JsonNode,
+    new_edits = true): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-bulk-docs
   var body = ( %* {"docs": docs}).createNadd([new_edits], bulkDocsDefaults)
   let req = self.hc.post(fmt"{self.baseUrl}/{db}/_bulk_docs", $body)
@@ -729,14 +742,16 @@ proc createOrUpdateDoc*(self, db, docid; obj: JsonNode): JsonNode =
   doAssert req.code in {Http201, Http202}
   req.body.parseJson
 
-proc deleteDoc*(self, db, docid; rev: string, batch = BVNon, new_edits = false) {.captureDefaults.} =
+proc deleteDoc*(self, db, docid; rev: string, batch = BVNon,
+    new_edits = false) {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/document/common.html#delete--db-docid
   var queryParams = newseq[DoubleStrTuple]().createNadd([batch, new_edits], deleteDocDefaults)
   let req = self.hc.delete(fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams))
 
   doAssert req.code in {Http200, Http202}
 
-proc copyDoc*(self, db, docid; destination: string, rev = "", batch = BVNon): JsonNode {.captureDefaults.} =
+proc copyDoc*(self, db, docid; destination: string, rev = "",
+    batch = BVNon): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/document/common.html#copy--db-docid
   var queryParams = newseq[DoubleStrTuple]().createNadd([rev, batch], copyDocDefaults)
 
@@ -749,7 +764,8 @@ proc copyDoc*(self, db, docid; destination: string, rev = "", batch = BVNon): Js
   doAssert req.code in {Http201, Http202}
   req.body.parseJson
 
-proc getDocAtt*(self, db, docid, attname; headOnly: static[bool] = false, rev = ""): JsonNode {.captureDefaults.} =
+proc getDocAtt*(self, db, docid, attname; headOnly: static[bool] = false,
+    rev = ""): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/document/attachments.html#head--db-docid-attname
   ## https://docs.couchdb.org/en/latest/api/document/attachments.html#get--db-docid-attname
   var queryParams = newseq[DoubleStrTuple].createNadd([rev], getDocDefaults)
@@ -764,7 +780,8 @@ proc getDocAtt*(self, db, docid, attname; headOnly: static[bool] = false, rev = 
   doAssert req.code == Http200
   req.body.parseJson
 
-proc uploadDocAtt*(self, db, docid, attname; contentType, content: string, rev = ""): JsonNode {.captureDefaults.} =
+proc uploadDocAtt*(self, db, docid, attname; contentType, content: string,
+    rev = ""): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/document/attachments.html#put--db-docid-attname
   var queryParams = newseq[DoubleStrTuple]().createNadd([rev], getDocDefaults)
 
@@ -780,7 +797,8 @@ proc uploadDocAtt*(self, db, docid, attname; contentType, content: string, rev =
   doAssert req.code in {Http201, Http202}
   req.body.parseJson
 
-proc deleteDocAtt*(self, db, docid; rev: string, batch = BVNon) {.captureDefaults.} =
+proc deleteDocAtt*(self, db, docid; rev: string,
+    batch = BVNon) {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/document/attachments.html#delete--db-docid-attname
 
   var queryParams = @[("rev", rev)].createNadd([batch], deleteDocDefaults)
@@ -828,12 +846,14 @@ proc deleteDesignDoc*(self, db, ddoc) =
 proc copyDesignDoc*(self, db, ddoc): JsonNode =
   ## https://docs.couchdb.org/en/stable/api/ddoc/common.html#copy--db-_design-ddoc
 
-  let req = self.hc.request(fmt"{self.baseUrl}/{db}/_design/{ddoc}", httpMethod = "COPY")
+  let req = self.hc.request(fmt"{self.baseUrl}/{db}/_design/{ddoc}",
+      httpMethod = "COPY")
 
   doAssert req.code == Http200
   req.body.parseJson
 
-proc getDesignDocAtt*(self, db, ddoc, attname; headOnly: static[bool] = false, rev = ""): JsonNode {.captureDefaults.} =
+proc getDesignDocAtt*(self, db, ddoc, attname; headOnly: static[bool] = false,
+    rev = ""): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/stable/api/ddoc/common.html#head--db-_design-ddoc-attname
   ## https://docs.couchdb.org/en/stable/api/ddoc/common.html#get--db-_design-ddoc-attname
   var queryParams = newseq[DoubleStrTuple].createNadd([rev], getDocDefaults)
@@ -848,7 +868,8 @@ proc getDesignDocAtt*(self, db, ddoc, attname; headOnly: static[bool] = false, r
   doAssert req.code == Http200
   req.body.parseJson
 
-proc uploadDesignDocAtt*(self, db, ddoc, attname; contentType, content: string, rev = "") {.captureDefaults.} =
+proc uploadDesignDocAtt*(self, db, ddoc, attname; contentType, content: string,
+    rev = "") {.captureDefaults.} =
   ## https://docs.couchdb.org/en/stable/api/ddoc/common.html#put--db-_design-ddoc-attname
   var queryParams = newseq[DoubleStrTuple]().createNadd([rev], getDocDefaults)
 
@@ -931,12 +952,79 @@ proc getView*(self, db, ddoc, view;
 
 proc getView*(self, db, ddoc, view; queries: JsonNode): JsonNode =
   ## https://docs.couchdb.org/en/stable/api/ddoc/views.html#get--db-_design-ddoc-_view-view
-  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_view/{view}", $ %* {"queries": queries})
+  let req = self.hc.post(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_view/{view}", $
+      %* {"queries": queries})
   doAssert req.code == Http200
 
   req.body.parseJson
 
-# TODO https://docs.couchdb.org/en/stable/api/ddoc/search.html#db-design-design-doc-search-index-name
+proc searchByIndex*(self, db, ddoc; index: string,
+  query: string,
+  bookmark = "",
+  counts = newJObject(),
+  drilldown = newjObject(),
+  group_field = "",
+  group_sort = newjObject(),
+  highlight_fields = newjObject(),
+  highlight_pre_tag = "",
+  highlight_post_tag = "",
+  highlight_number = 0,
+  highlight_size = 0,
+  include_docs = false,
+  include_fields = newJObject(),
+  limit = 0,
+  ranges = newJObject(),
+  sort = newJobject(),
+  stale = "",
+): JsonNode {.captureDefaults.} =
+  ## https://docs.couchdb.org/en/stable/api/ddoc/search.html#get--db-_design-ddoc-_search-index
+  var queryParams = @[("query", query)].createNadd([
+    bookmark,
+    counts,
+    drilldown,
+    group_field,
+    group_sort,
+    highlight_fields,
+    highlight_pre_tag,
+    highlight_post_tag,
+    highlight_number,
+    highlight_size,
+    include_docs,
+    include_fields,
+    limit,
+    ranges,
+    sort,
+    stale,
+  ], searchByIndexDefaults)
+  let req = self.hc.get(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_search/{index}?" &
+      encodeQuery(queryParams))
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc searchInfo*(self, db, ddoc; index: string): JsonNode =
+  ## https://docs.couchdb.org/en/stable/api/ddoc/search.html#get--db-_design-ddoc-_search_info-index
+  let req = self.hc.get(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_search_info/{index}")
+
+  doAssert req.code == Http200
+  req.body.parseJson
+
+proc execUpdateFunc*(self, db, ddoc; `func`: string, body: JsonNode = newJNull(),
+    docid = ""): JsonNode =
+  ## https://docs.couchdb.org/en/stable/api/ddoc/render.html#post--db-_design-ddoc-_update-func
+  ## https://docs.couchdb.org/en/stable/api/ddoc/render.html#put--db-_design-ddoc-_update-func-docid
+
+  let req = self.hc.request(
+    fmt"{self.baseUrl}/{db}/_design/{ddoc}/_update/{`func`}/{docid}",
+    body = $body,
+    httpMethod = (
+      if docid == "": HttpPost
+    else: HttpPut
+  )
+  )
+
+  doAssert req.code == Http200
+  req.body.parseJson
 
 # PARTIONED DATABASEs API ------------------------------------------------------------
 
