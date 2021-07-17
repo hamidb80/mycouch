@@ -1,11 +1,10 @@
-import unittest, json, sequtils
-import mycouch
+import unittest, json
+import mycouch/api
 
 func contains(json: JsonNode, keys: openArray[string]): bool =
   for k in keys:
     if k notin json:
       return false
-
   true
 
 suite "server api":

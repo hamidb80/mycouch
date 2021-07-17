@@ -5,24 +5,20 @@ import macroutils, macroplus
 
 type DoubleStrTuple* = tuple[key: string, val: string]
 
-func getRealName(n: NimNode): string =
-  case n.kind:
-  of nnkPostfix: n[1].strval
-  of nnkIdent: n.strval
-  else:
-    raise newException(ValueError, "not")
-
 macro captureDefaults*(routine): untyped =
   ## this macro captures all default valued arguments and save them in a let defaults: tulple[arg1: defaultVal, arg2: ...,]
   ## in the head of the routine
 
   routine.expectKind RoutineNodes
 
-  # let defaults = (a:2, b:3)
+  # let defaults {.global.} = (a:2, b:3)
   #
   # LetSection:
   #   IdentDef:
-  #     Ident "defaults"
+  #    PragmaExpr
+  #      Ident "defaults"
+  #      Pragma
+  #        Ident "global"
   #     Empty
   #     TupleConstr:
   #       ExprColonExpr:
@@ -32,10 +28,10 @@ macro captureDefaults*(routine): untyped =
   #         Ident "b"
   #         IntLit 3
 
-  var defs = newLetStmt(
-    ident(routine[RoutineName].getRealName & "Defaults"), 
-    newnimNode(nnkTupleConstr)
-  )
+  var defs = quote:
+    let defaults {.inject, global.} = nil # use global pragma to initiate at soon as program started
+
+  defs[0][IdentDefDefaultVal] = newNimNode(nnkTupleConstr)
 
   for arg in routine[RoutineFormalParams][FormalParamsArguments]:
     if arg[IdentDefDefaultVal].kind != nnkEmpty:
@@ -45,7 +41,8 @@ macro captureDefaults*(routine): untyped =
           arg[IdentDefDefaultVal]
         )
   
-  return newStmtList(defs, routine)
+  routine[RoutineBody].insert 0, defs
+  return routine
 
 func getStrName(n: NimNode): string=
   case n.kind:
@@ -82,7 +79,6 @@ macro addIfIsNotDefault*(acc: var seq[DoubleStrTuple], checks, defaults): untype
       if `item` != `defaults`.`item`:
         `acc`.add (`item.getStrName`, $ `item`)
 
-
 template createNadd*(data, checks, default): untyped=
   block:
     var res = data
@@ -93,7 +89,7 @@ template createNadd*(data, checks, default): untyped=
 when isMainModule:
   proc hey(a: bool, `b` = "hello", c = 2) {.captureDefaults.} =
     var list: seq[DoubleStrTuple]
-    list.addIfIsNotDefault [`b`, c], heydefaults
+    list.addIfIsNotDefault [`b`, c], defaults
 
     echo list
 

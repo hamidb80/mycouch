@@ -189,4 +189,4 @@ proc mango*(
     update,
     stable,
     execution_stats,
-  ], mangoDefaults)
+  ], defaults)

@@ -54,7 +54,7 @@ proc newCouchDBClient*(host: string = "http://localhost", port = 5984): CouchDBC
 
 # SERVER API ----------------------------------------------------------------------
 
-proc serverInfo*(self): JsonNode =
+proc serverInfo*(self): JsonNode=
   ## https://docs.couchdb.org/en/latest/api/server/common.html#api-server-root
   let req = self.hc.get(fmt"{self.baseUrl}/")
 
@@ -84,7 +84,7 @@ proc allDBs*(self;
     limit,
     startKey,
     endKey,
-  ], allDBsDefaults)
+  ], defaults)
 
   let req = self.hc.get(fmt"{self.baseUrl}/_all_dbs/?" & encodeQuery(queryParams))
 
@@ -99,7 +99,8 @@ proc DBsInfo*(self; keys: openArray[string]): JsonNode =
   doAssert req.code == Http200 # or bad request 400
   return req.body.parseJson
 
-# TODO (cluster setup) https://docs.couchdb.org/en/latest/api/server/common.html#cluster-setup
+## https://docs.couchdb.org/en/latest/api/server/common.html#get--_cluster_setup
+## https://docs.couchdb.org/en/latest/api/server/common.html#post--_cluster_setup
 
 proc DBupdates*(self; feed: string, timeout = 60, heartbeat = 60000, since = ""): JsonNode =
   ## https://docs.couchdb.org/en/latest/api/server/common.html#db-updates
@@ -144,7 +145,7 @@ proc replicate*(self;
     doc_ids,
     filter,
     source_proxy, target_proxy,
-  ], replicateDefaults))
+  ], defaults))
 
   doAssert req.code in {Http200, Http202}
   return req.body.parseJson
@@ -155,7 +156,7 @@ proc schedulerJobs*(self; limit, skip = 0): JsonNode {.captureDefaults.} =
   let queryParams = newseq[DoubleStrTuple]().createNadd([
     limit,
     skip
-  ], schedulerJobsDefaults)
+  ], defaults)
 
   let req = self.hc.get(fmt"{self.baseUrl}/_all_dbs/?" & encodeQuery(queryParams))
 
@@ -169,7 +170,7 @@ proc schedulerDocs*(self; replicatorDB, doc_id = "", limit, skip = 0, ): JsonNod
     fmt"{self.baseUrl}/_scheduler/docs" & (
       if replicatorDB != "": fmt"/{replicatorDB}"
       else:
-        var queryParams = newseq[DoubleStrTuple]().createNadd([limit, skip], schedulerJobsDefaults)
+        var queryParams = newseq[DoubleStrTuple]().createNadd([limit, skip], defaults)
         "?" & encodeQuery(queryParams)
   ))
 
@@ -247,7 +248,7 @@ proc changeReshardState*(self; state: string, state_reason = "") {.captureDefaul
   let req = self.hc.put(fmt"{self.baseUrl}/_reshard/state", $ createNadd(
     %*{"state": state},
     [state_reason],
-    changeReshardStateDefaults
+    defaults
   ))
   doAssert req.code == Http200 # 400 or 401
 
@@ -267,7 +268,7 @@ proc createReshadJob*(self, db; `type`, node, `range`, shard,
     "type": `type`,
     "db": db,
   }, [node, `range`, shard, error],
-  createReshadJobDefaults))
+  defaults))
 
   doAssert req.code == Http200 # or bad request 400
 
@@ -289,7 +290,7 @@ proc changeReshardJobState*(self; jobId, state: string, state_reason = "") {.cap
   let req = self.hc.put(fmt"{self.baseUrl}/_reshard/jobs/{jobId}/state", $createNadd(
     %* {"state": state},
     [state_reason],
-    changeReshardStateDefaults
+    defaults
   ))
 
   doAssert req.code == Http200 # 400 or 401
@@ -378,7 +379,7 @@ proc createDB*(self, db; q, n = -1, partioned = false): JsonNode {.captureDefaul
   let req = self.hc.put(fmt"{self.baseUrl}/{db}", encodeQuery createNadd(
     newseq[DoubleStrTuple](),
     [q, n, partioned],
-    createDBDefaults
+    defaults
   ))
 
   doAssert req.code in {Http201, Http202}
@@ -396,7 +397,7 @@ proc createDoc*(self, db; doc: JsonNode, batch = BVNon): JsonNode {.captureDefau
   let req = self.hc.post(fmt"{self.baseUrl}/{db}/?" & encodeQuery createNadd(
     newseq[DoubleStrTuple](),
     [batch],
-    createDocDefaults
+    defaults
   ), $doc)
 
   doAssert req.code in {Http201, Http202}
@@ -446,12 +447,12 @@ proc designDocs*(self, db;
     limit,
     skip,
     update_seq,
-  ], designDocsDefaults)
+  ], defaults)
 
   let
     url = fmt"{self.baseUrl}/{db}/_design_docs/?" & encodeQuery(queryParams)
     req =
-      if keys == designDocsDefaults.keys:
+      if keys == defaults.keys:
         self.hc.get(url)
       else:
         self.hc.post(url, $ %*{"keys": keys})
@@ -472,7 +473,7 @@ proc bulkGet*(self, db; docs: JsonNode, revs = false): JsonNode {.captureDefault
     fmt"{self.baseUrl}/{db}/_bulk_get?" & encodeQuery createNadd(
       newseq[DoubleStrTuple](),
       [revs],
-      bulkGetDefaults
+      defaults
   ), $docs)
 
   doAssert req.code == Http200
@@ -483,7 +484,7 @@ proc bulkDocs*(self, db; docs: JsonNode, new_edits = true): JsonNode {.captureDe
   let req = self.hc.post(fmt"{self.baseUrl}/{db}/_bulk_docs", $createNadd(
     %* {"docs": docs},
     [new_edits],
-    bulkDocsDefaults
+    defaults
   ))
 
   doAssert req.code == Http201
@@ -516,7 +517,7 @@ proc find*(self, db;
     update,
     stable,
     execution_stats,
-  ], findDefaults)
+  ], defaults)
 
   if use_index != "":
     body["use_index"] = % use_index
@@ -541,7 +542,7 @@ proc createIndex*(self, db;
     name,
     `type`,
     partitioned
-  ], createIndexDefaults))
+  ], defaults))
 
   doAssert req.code == Http200
   req.body.parseJson
@@ -620,7 +621,7 @@ proc changes*(self, db;
     timeout,
     view,
     seq_interval,
-  ], changesDefaults)
+  ], defaults)
 
   let url = fmt"{self.baseUrl}/{db}/_changes?" & encodeQuery(queryParams)
   let req =
@@ -743,7 +744,7 @@ proc getLocalDocs*(self, db;
     limit,
     skip,
     update_seq,
-  ], getLocalDocsDefaults))
+  ], defaults))
 
   doAssert req.code == Http200
   req.body.parseJson
@@ -781,7 +782,7 @@ proc getDoc*(self, db, docid; headOnly: static[bool] = false,
     rev,
     revs,
     revs_info,
-  ], getDocDefaults)
+  ], defaults)
 
   if all:
     queryParams.add ("open_revs", "all")
@@ -807,7 +808,7 @@ proc createOrUpdateDoc*(self, db, docid; obj: JsonNode): JsonNode =
 proc deleteDoc*(self, db, docid; rev: string, batch = BVNon, new_edits = false) {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/document/common.html#delete--db-docid
   ## https://docs.couchdb.org/en/latest/api/local.html#delete--db-_local-docid
-  var queryParams = newseq[DoubleStrTuple]().createNadd([batch, new_edits], deleteDocDefaults)
+  var queryParams = newseq[DoubleStrTuple]().createNadd([batch, new_edits], defaults)
   let req = self.hc.delete(fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams))
 
   doAssert req.code in {Http200, Http202}
@@ -819,7 +820,7 @@ proc copyDoc*(self, db, docid;
 ): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/document/common.html#copy--db-docid
   ## https://docs.couchdb.org/en/latest/api/local.html#copy--db-_local-docid
-  var queryParams = newseq[DoubleStrTuple]().createNadd([rev, batch], copyDocDefaults)
+  var queryParams = newseq[DoubleStrTuple]().createNadd([rev, batch], defaults)
 
   let req = self.hc.request(
     fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams),
@@ -836,7 +837,7 @@ proc getDocAtt*(self, db, docid, attname;
 ): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/document/attachments.html#head--db-docid-attname
   ## https://docs.couchdb.org/en/latest/api/document/attachments.html#get--db-docid-attname
-  var queryParams = newseq[DoubleStrTuple].createNadd([rev], getDocDefaults)
+  var queryParams = newseq[DoubleStrTuple].createNadd([rev], defaults)
 
   let req = self.hc.request(
     fmt"{self.baseUrl}/{db}/{docid}/{attname}?" & encodeQuery(queryParams),
@@ -854,7 +855,7 @@ proc uploadDocAtt*(self, db, docid, attname;
   rev = ""
 ): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/document/attachments.html#put--db-docid-attname
-  var queryParams = newseq[DoubleStrTuple]().createNadd([rev], getDocDefaults)
+  var queryParams = newseq[DoubleStrTuple]().createNadd([rev], defaults)
 
   let req = self.hc.request(
     fmt"{self.baseUrl}/{db}/{docid}/{attname}?" & encodeQuery(queryParams),
@@ -872,7 +873,7 @@ proc uploadDocAtt*(self, db, docid, attname;
 proc deleteDocAtt*(self, db, docid; rev: string, batch = BVNon) {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/document/attachments.html#delete--db-docid-attname
 
-  var queryParams = @[("rev", rev)].createNadd([batch], deleteDocDefaults)
+  var queryParams = @[("rev", rev)].createNadd([batch], defaults)
   let req = self.hc.delete(fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams))
 
   doAssert req.code in {Http200, Http202}
@@ -929,7 +930,7 @@ proc getDesignDocAtt*(self, db, ddoc, attname;
 ): JsonNode {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#head--db-_design-ddoc-attname
   ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#get--db-_design-ddoc-attname
-  var queryParams = newseq[DoubleStrTuple].createNadd([rev], getDocDefaults)
+  var queryParams = newseq[DoubleStrTuple].createNadd([rev], defaults)
 
   let req = self.hc.request(
     fmt"{self.baseUrl}/{db}/{ddoc}/{attname}?" & encodeQuery(queryParams),
@@ -943,7 +944,7 @@ proc getDesignDocAtt*(self, db, ddoc, attname;
 
 proc uploadDesignDocAtt*(self, db, ddoc, attname; contentType, content: string, rev = "") {.captureDefaults.} =
   ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#put--db-_design-ddoc-attname
-  var queryParams = newseq[DoubleStrTuple]().createNadd([rev], getDocDefaults)
+  var queryParams = newseq[DoubleStrTuple]().createNadd([rev], defaults)
 
   let req = self.hc.request(
     fmt"{self.baseUrl}/{db}/{ddoc}/{attname}?" & encodeQuery(queryParams),
@@ -1015,7 +1016,7 @@ proc getView*(self, db, ddoc, view;
     stable,
     update,
     update_seq,
-  ], getViewDefaults))
+  ], defaults))
 
   doAssert req.code == Http200
   req.body.parseJson
@@ -1065,7 +1066,7 @@ proc searchByIndex*(self, db, ddoc; index: string,
     ranges,
     sort,
     stale,
-  ], searchByIndexDefaults)
+  ], defaults)
   let req = self.hc.get(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_search/{index}?" &
       encodeQuery(queryParams))
 
