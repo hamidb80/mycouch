@@ -1,7 +1,7 @@
 import 
   macros, 
   json
-import macroutils, macroplus
+import macroutils, macroplus, strutils
 
 type DoubleStrTuple* = tuple[key: string, val: string]
 
@@ -44,13 +44,24 @@ macro captureDefaults*(routine): untyped =
   routine[RoutineBody].insert 0, defs
   return routine
 
+macro addTestCov*(body): untyped=
+  body.expectKind nnkStmtList
+
+  for prc in body:
+    if prc.kind in {nnkProcDef, nnkFuncDef}:
+      if prc.pragmas.kind == nnkEmpty:
+        prc.pragmas = newNimNode(nnkPragma)
+
+      prc.pragmas.add ident"cov"
+
+  body
+
 func getStrName(n: NimNode): string=
   case n.kind:
   of nnkident: n.strVal
   of nnkAccQuoted: n[0].strVal
   else:
     raise newException(ValueError, "not allowed")
-
 
 macro addIfIsNotDefault*(acc: var JsonNode, checks, defaults): untyped =
   ## checks bracket [ tuple( currentValue[0], defaultValue[1] ) ]

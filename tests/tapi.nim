@@ -1,5 +1,6 @@
-import unittest, json
-import mycouch/api
+import unittest, httpcore, json, sequtils, strutils, strformat
+import coverage
+import mycouch/[api, private/exceptions]
 
 func contains(json: JsonNode, keys: openArray[string]): bool =
   for k in keys:
@@ -7,18 +8,60 @@ func contains(json: JsonNode, keys: openArray[string]): bool =
       return false
   true
 
-suite "server api":
+template createClient {.dirty.}=
   let cc = newCouchDBClient()
   discard cc.cookieAuthenticate("admin", "admin")
 
-  test "serverInfo":
+template testAPI(name, body) {.dirty.}=
+  test name:
+    try:
+      body
+
+    except CouchDBError as e:
+      echo fmt"API Error: {e.responseCode}"
+      echo e.info
+    
+# -----------------------------------
+
+suite "SERVER API [unit]":
+  createClient
+  
+  testAPI "serverInfo":
     let resp = cc.serverInfo()
     check ["couchdb", "version"] in resp
 
-  test "activeTasks":
-    let resp = cc.activeTasks()
-    check resp.kind == JArray
+suite "DATABASE API [unit]":
+  createClient
+  const dbNames = ["sample1", "sample2"]
+
+  testAPI "create DB":
+    for db in dbNames:
+      cc.createDB(db)
+
+    let dbs = cc.allDBs
+    check dbNames.allIt dbs.contains(it)
+
+  testAPI "delete DB":
+    for db in dbNames:
+      cc.deleteDB(db)
     
-  test "allDBs":
-    let resp = cc.allDBs()
-    check resp.len != 0
+    let dbs = cc.allDBs
+    check not dbNames.anyIt(dbs.contains(it))
+
+  testAPI "isDBexists":
+    check not cc.isDBexists("movies")
+    cc.createDB("movies")
+    check cc.isDBexists("movies")
+    cc.deleteDB("movies")
+
+  testAPI "isDBexists2":
+    check cc.getDoc("movies", "sasa")
+    check cc.isDBexists("movies")
+
+  testAPI "isDBexists3":
+    check not cc.isDBexists("movies")
+
+
+echo " :::::: not covered APIs :::::: "
+echo (incompletelyCoveredProcs().mapIt " - " & it.info.procName).join "\n"
+# echo incompletelyCoveredProcs() FIXME
