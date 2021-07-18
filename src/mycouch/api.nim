@@ -54,8 +54,12 @@ proc changeHeaders(
     result.add key, val
 
 template castError*(res: Response) =
-  if code(res).int >= 300:
-    raise newCouchDBError(code(res), res.body.parseJson)
+  if res.code.int >= 300:
+    raise newCouchDBError(res.code, res.body.parseJson)
+
+  # if code(res).int >= 300:
+  #   raise newCouchDBError(code(res), res.body.parseJson)
+
 
 # SERVER API ----------------------------------------------------------------------
 
@@ -795,7 +799,7 @@ addTestCov:
     let req = self.hc.request(
       fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams),
       httpMethod =
-      if headOnly: HttpHead
+        if headOnly: HttpHead
         else: HttpGet
       )
 

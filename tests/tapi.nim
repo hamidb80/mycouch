@@ -47,7 +47,7 @@ suite "DATABASE API [unit]":
       cc.deleteDB(db)
     
     let dbs = cc.allDBs
-    check not dbNames.anyIt(dbs.contains(it))
+    check not dbNames.anyIt dbs.contains(it)
 
   testAPI "isDBexists":
     check not cc.isDBexists("movies")
@@ -55,6 +55,14 @@ suite "DATABASE API [unit]":
     check cc.isDBexists("movies")
     cc.deleteDB("movies")
 
-echo " :::::: not covered APIs :::::: "
-echo (incompletelyCoveredProcs().mapIt " - " & it.info.procName).join "\n"
-# echo incompletelyCoveredProcs() FIXME
+  testAPI "isDBexists2":
+    check cc.getDoc("movies", "sasa").hasKey "d"
+    check cc.isDBexists("movies")
+
+  testAPI "isDBexists3":
+    check not cc.isDBexists("movies")
+
+when isMainModule:
+  echo "\n :::::: not covered APIs :::::: "
+  echo (incompletelyCoveredProcs().mapIt " - " & it.info.procName).join "\n"
+  # echo incompletelyCoveredProcs() # FIXME
