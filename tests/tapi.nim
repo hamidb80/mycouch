@@ -55,7 +55,7 @@ suite "DATABASE API [unit]":
     cc.deleteDB("movies")
 
   testAPI "isDBexists2":
-    check cc.getDoc("movies", "sasa")
+    check cc.getDoc("movies", "sasa") == %* {}
     check cc.isDBexists("movies")
 
   testAPI "isDBexists3":

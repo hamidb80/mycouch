@@ -53,7 +53,7 @@ proc changeHeaders(
   for (key, val) in changedData:
     result.add key, val
 
-template castError(res: Response) =
+template castError*(res) = # res: Response
   if res.code.int >= 300: 
     raise newCouchDBError(res.code, res.body.parseJson)
 
