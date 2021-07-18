@@ -53,9 +53,9 @@ proc changeHeaders(
   for (key, val) in changedData:
     result.add key, val
 
-template castError*(res) = # res: Response
-  if res.code.int >= 300: 
-    raise newCouchDBError(res.code, res.body.parseJson)
+template castError*(res: Response) =
+  if code(res).int >= 300:
+    raise newCouchDBError(code(res), res.body.parseJson)
 
 # SERVER API ----------------------------------------------------------------------
 
@@ -829,7 +829,7 @@ addTestCov:
 
     let req = self.hc.request(
       fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams),
-      httpMethod = "COPY",
+      httpMethod = "COPY", # compiler complains about deprecation
       headers = changeHeaders(self.hc.headers, [("Destination", destination)])
     )
 

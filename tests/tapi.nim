@@ -19,7 +19,8 @@ template testAPI(name, body) {.dirty.}=
 
     except CouchDBError as e:
       echo fmt"API Error: {e.responseCode}"
-      echo e.info
+      echo "details: ", e.info
+      check false
     
 # -----------------------------------
 
@@ -53,14 +54,6 @@ suite "DATABASE API [unit]":
     cc.createDB("movies")
     check cc.isDBexists("movies")
     cc.deleteDB("movies")
-
-  testAPI "isDBexists2":
-    check cc.getDoc("movies", "sasa") == %* {}
-    check cc.isDBexists("movies")
-
-  testAPI "isDBexists3":
-    check not cc.isDBexists("movies")
-
 
 echo " :::::: not covered APIs :::::: "
 echo (incompletelyCoveredProcs().mapIt " - " & it.info.procName).join "\n"

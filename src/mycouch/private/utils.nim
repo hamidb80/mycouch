@@ -2,6 +2,7 @@ import
   macros, 
   json
 import macroutils, macroplus, strutils
+import coverage
 
 type DoubleStrTuple* = tuple[key: string, val: string]
 
@@ -28,8 +29,8 @@ macro captureDefaults*(routine): untyped =
   #         Ident "b"
   #         IntLit 3
 
-  var defs = quote:
-    let defaults {.inject, global.} = nil # use global pragma to initiate at soon as program started
+  var defs = quote: 
+    let defaults {.used, inject, global.} = nil # use global pragma to initiate at soon as program started
 
   defs[0][IdentDefDefaultVal] = newNimNode(nnkTupleConstr)
 
@@ -52,7 +53,7 @@ macro addTestCov*(body): untyped=
       if prc.pragmas.kind == nnkEmpty:
         prc.pragmas = newNimNode(nnkPragma)
 
-      prc.pragmas.add ident"cov"
+      prc.pragmas.add bindSym("cov")
 
   body
 
