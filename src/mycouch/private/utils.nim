@@ -46,6 +46,7 @@ macro captureDefaults*(routine): untyped =
   return routine
 
 macro addTestCov*(body): untyped=
+  # TODO: add cov pragma only if custom test flags are provided
   body.expectKind nnkStmtList
 
   for prc in body:

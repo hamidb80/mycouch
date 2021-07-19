@@ -131,9 +131,7 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc replicate*(self;
-    source,
-    target: string,
+  proc replicate*(self; source, target: string,
     cancel,
     continuous,
     create_target = false,
@@ -194,28 +192,28 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc nodeInfo*(self, node): JsonNode =
+  proc nodeInfo*(self; node = "_local"): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#node-node-name
     let req = self.hc.get(fmt"{self.baseUrl}/_node/{node}")
 
     castError req
     req.body.parseJson
 
-  proc nodeStats*(self, node): JsonNode =
+  proc nodeStats*(self; node = "_local"): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#node-node-name
     let req = self.hc.get(fmt"{self.baseUrl}/_node/{node}/_stats")
 
     castError req
     req.body.parseJson
 
-  proc nodeSystem*(self, node): JsonNode =
-    ## https://docs.couchdb.org/en/latest/api/server/common.html#node-node-name
+  proc nodeSystem*(self; node = "_local"): JsonNode =
+    ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_node-node-name-_system
     let req = self.hc.get(fmt"{self.baseUrl}/_node/{node}/_system")
 
     castError req
     req.body.parseJson
 
-  proc nodeRestart*(self, node): JsonNode =
+  proc nodeRestart*(self; node = "_local"): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#node-node-name-restart
     let req = self.hc.post(fmt"{self.baseUrl}/_node/{node}/_restart")
 
@@ -224,16 +222,16 @@ addTestCov:
 
   ## maybeTODO: https://docs.couchdb.org/en/latest/api/server/common.html#search-analyze
 
-  proc up*(self, node): bool =
+  proc up*(self): bool =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#up
     self.hc.get(fmt"{self.baseUrl}/_up").code == Http200 # or 404
 
-  proc uuids*(self; count = 1): JsonNode =
+  proc uuids*(self; count = 1): seq[string] =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#uuids
     let req = self.hc.get(fmt"{self.baseUrl}/_uuids?count={count}")
 
     castError req
-    req.body.parseJson
+    req.body.parseJson["uuids"].mapIt it.str
 
   proc reshard*(self): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#reshard
@@ -327,12 +325,15 @@ addTestCov:
   proc deleteCookieSession*(self) =
     ## https://docs.couchdb.org/en/latest/api/server/authn.html#delete--_session
     # FIXME also remove it from header
-    let req = self.hc.delete(fmt"{self.baseUrl}/_session")
-
+    let req = self.hc.delete(fmt"{self.baseUrl}/_session")  
     castError req
+    
+    self.hc.headers.del "Cookie"
+
 
   # TODO proxy-auth, jwf-auth
 
+ # add node = "_local"
   proc getNodeConfig*(self, node): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#get--_node-node-name-_config
     let req = self.hc.get(fmt"{self.baseUrl}/_node/{node}/_config")
@@ -478,18 +479,22 @@ addTestCov:
 
   proc bulkGet*(self, db; docs: JsonNode, revs = false): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-bulk-get
+    doAssert docs.kind == JArray
+
     let req = self.hc.post(
       fmt"{self.baseUrl}/{db}/_bulk_get?" & encodeQuery createNadd(
         newseq[DoubleStrTuple](),
         [revs],
         defaults
-    ), $docs)
+    ), $ %*{"docs": docs})
 
     castError req
     req.body.parseJson
 
   proc bulkDocs*(self, db; docs: JsonNode, new_edits = true): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-bulk-docs
+    doAssert docs.kind == JArray
+
     let req = self.hc.post(fmt"{self.baseUrl}/{db}/_bulk_docs", $createNadd(
       %* {"docs": docs},
       [new_edits],
@@ -722,7 +727,7 @@ addTestCov:
     castError req
 
   # DOCUMENTs API & LOCAL DOCUMENTs API ---------------------------------------------------
-
+  # TODO check if it is the smae as 'getDocs'
   proc getLocalDocs*(self, db;
     conflicts,
     descending = false,
@@ -760,7 +765,9 @@ addTestCov:
 
   ## to local API, append `doc_id` to`_local` : "_local/{doc_id}"
 
-  proc getDoc*(self, db, docid; headOnly: static[bool] = false,
+  # TODO:bug report
+  # proc getDoc*(self, db, docid; headOnly: static[bool] = false,
+  proc getDoc*(self, db, docid; rev="", headOnly: bool = false,
     attachments,
     att_encoding_info = false,
     atts_since = newseq[string](),
@@ -771,7 +778,6 @@ addTestCov:
     meta = false,
     open_revs = newseq[string](),
     all = false,
-    rev = "",
     revs,
     revs_info = false
   ): JsonNode {.captureDefaults.} =
@@ -806,10 +812,10 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc createOrUpdateDoc*(self, db, docid; obj: JsonNode): JsonNode =
+  proc createOrUpdateDoc*(self, db, docid; rev: string, obj: JsonNode): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/document/common.html#put--db-docid
     ## https://docs.couchdb.org/en/latest/api/local.html#put--db-_local-docid
-    let req = self.hc.put(fmt"{self.baseUrl}/{db}/{docid}", $obj)
+    let req = self.hc.put(fmt"{self.baseUrl}/{db}/{docid}?rev={rev}", $obj)
 
     castError req
     req.body.parseJson
@@ -817,13 +823,12 @@ addTestCov:
   proc deleteDoc*(self, db, docid; rev: string, batch = BVNon, new_edits = false) {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/document/common.html#delete--db-docid
     ## https://docs.couchdb.org/en/latest/api/local.html#delete--db-_local-docid
-    var queryParams = newseq[DoubleStrTuple]().createNadd([batch, new_edits], defaults)
+    var queryParams = @[("rev", rev)].createNadd([batch, new_edits], defaults)
     let req = self.hc.delete(fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams))
 
     castError req
 
-  proc copyDoc*(self, db, docid;
-    destination: string,
+  proc copyDoc*(self, db, docid; destination: string,
     rev = "",
     batch = BVNon
   ): JsonNode {.captureDefaults.} =
@@ -831,6 +836,7 @@ addTestCov:
     ## https://docs.couchdb.org/en/latest/api/local.html#copy--db-_local-docid
     var queryParams = newseq[DoubleStrTuple]().createNadd([rev, batch], defaults)
 
+    # FIXME httpclient dosen't support custom httpmethod
     let req = self.hc.request(
       fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams),
       httpMethod = "COPY", # compiler complains about deprecation
