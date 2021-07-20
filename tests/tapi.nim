@@ -2,6 +2,14 @@ import unittest, httpcore, json, sequtils, strutils, strformat, sets, os
 import coverage
 import mycouch/[api, private/exceptions]
 
+const 
+  uname = getEnv "COUCHDB_ADMIN_NAME"
+  upass = getEnv "COUCHDB_ADMIN_PASS"
+
+if uname.len * upass.len == 0:
+  quit("'COUCHDB_ADMIN_NAME' & 'COUCHDB_ADMIN_PASS' must be set")
+
+# -----------------------------------------
 
 func contains(json: JsonNode, keys: openArray[string]): bool =
   for k in keys:
@@ -12,12 +20,10 @@ func contains(json: JsonNode, keys: openArray[string]): bool =
 func contains(s, keys: openArray[string]): bool =
   (s.toHashSet.intersection keys.toHashSet).len == keys.len
 
-
 template testAPI(name, body) {.dirty.}=
   test name:
     try:
       body
-
     except CouchDBError as e:
       echo fmt"API Error: {e.responseCode}"
       echo "details: ", e.info
@@ -25,15 +31,15 @@ template testAPI(name, body) {.dirty.}=
 
 template createClient {.dirty.}=
   var cc = newCouchDBClient()
-  discard cc.cookieAuthenticate("admin", "admin")
+  discard cc.cookieAuthenticate(uname, upass)
 
-# -----------------------------------
+# -----------------------------------------
 
 suite "SERVER API [unit]":
   var cc = newCouchDBClient()
   
   testAPI "cookie auth":
-    discard cc.cookieAuthenticate("admin", "admin")
+    discard cc.cookieAuthenticate(uname, upass)
   
   testAPI "delete session":
     cc.deleteCookieSession
@@ -41,7 +47,7 @@ suite "SERVER API [unit]":
     expect CouchDBError:
       cc.createDB "sample1"
 
-  discard cc.cookieAuthenticate("admin", "admin")
+  discard cc.cookieAuthenticate(uname, upass)
 
   testAPI "get session":
     check "userCtx" in cc.getCurrentSession
@@ -60,8 +66,20 @@ suite "SERVER API [unit]":
   testAPI "active tasks":
     check cc.activeTasks().kind == JArray
 
+  testAPI "reshard states":
+    check "total" in cc.getReshards
+    check "state" in cc.reshardState
+    cc.changeReshardState RSrunning
+
+  var mainNode: string
+  testAPI "membership":
+    let req = cc.membership()
+    check ["all_nodes", "cluster_nodes"] in req
+
+    mainnode = req["all_nodes"][0].str
+
   # nodes ----------------------------
-  
+
   testAPI "node status":
     check "name" in cc.nodeInfo()
 
@@ -71,8 +89,11 @@ suite "SERVER API [unit]":
   testAPI "node system":
     check "uptime" in cc.nodeSystem()
 
-  testAPI "node info":
-    check ["all_nodes", "cluster_nodes"] in cc.membership()
+  testAPI "node config":
+    check "httpd" in cc.getNodeConfig mainNode
+
+  testAPI "reload config":
+    cc.reloadConfigs("_local")
 
   # testAPI "node restart":
   #   cc.nodeRestart()
@@ -82,6 +103,7 @@ suite "DATABASE API [unit]":
   const 
     dbNames = ["sample1", "sample2"]
     db1 = dbNames[0]
+    pdb = "pdb" # partitioned db
 
   testAPI "create DB":
     for db in dbNames:
@@ -98,20 +120,66 @@ suite "DATABASE API [unit]":
     let res2 = cc.DBsInfo dbNames
     check (res2.mapIt it["key"].str) == dbNames.toseq
 
+    check "shards" in cc.getshards db1
+
+  testAPI "security":
+    let sec = cc.getSecurity db1
+    check ["admins", "members"] in sec
+
+    cc.setSecurity(db1, sec["admins"], sec["members"])
+
+  testAPI "revision limit":
+    let lm = cc.getRevsLimit db1
+    cc.setRevsLimit db1, lm
+
   testAPI "compact DB":
     cc.compact(db1)
 
   testAPI "local docs":
     discard cc.getLocalDocs(db1)
 
-  testAPI "replicate":
+  testAPI "replicate": # replication creates a scheduler job
     discard cc.replicate(
       dbnames[0],
       dbnames[1],
+      continuous = true
     )
+
+  var 
+    scheduler_doc1Id: string
+    repicatorDB: string
+  testAPI "scheduler jobs":
+    let res = cc.schedulerJobs
+    check "jobs" in res
+
+    scheduler_doc1Id = res["jobs"][0]["doc_id"].str
+    repicatorDB = res["jobs"][0]["database"].str
+
+  testAPI "scheduler docs":
+    check "docs" in cc.schedulerDocs()
+
+  testAPI "scheduler doc":
+    check "info" in cc.getSchedulerDoc(repicatorDB, scheduler_doc1Id)
 
   testAPI "sync shards":
     cc.syncShards(db1)
+
+  testAPI "create reshard job":
+    let req = cc.createReshardJob db1
+    check req.allIt it["ok"].getBool
+
+  var reshardJob1Id: string
+  testAPI "get reshard jobs":
+    let res = cc.reshardJobs
+    check "jobs" in res
+    reshardJob1id = res["jobs"][0]["id"].str
+
+  testAPI "change reshard job state":
+    let res = cc.getReshardJobState reshardJob1id
+    cc.changeReshardJobState reshardJob1id, res["state"].str
+
+  testAPI "reshard delete job":
+    cc.deleteReshadJob reshardJob1id
 
   testAPI "delete DB":
     for db in dbNames:
@@ -121,6 +189,11 @@ suite "DATABASE API [unit]":
 
     check not dbNames.anyIt dbs.contains(it)
     check not cc.isDBexists(db1)
+
+  testAPI "partitioned db":
+    cc.createDB(pdb, partitioned = true)
+    discard cc.getPartitionInfo(pdb, "somepartition")
+    cc.deleteDB pdb
 
 suite "DOCUMENT API [unit]":
   createClient
@@ -137,6 +210,7 @@ suite "DOCUMENT API [unit]":
 
     (docId, docRev) = (res["id"].str, res["rev"].str)
     check cc.getDoc(db, docid)["name"].str == "hamid"
+    discard cc.getDoc(db, docid, headonly = true)
 
   testAPI "edit Doc":
     let res = cc.createOrUpdateDoc(db, docid, docrev, %*{
@@ -202,6 +276,16 @@ suite "DOCUMENT API [unit]":
     ])
     checkNames req["results"][0]["rows"]
 
+  testAPI "missing revs":
+    discard cc.missingRevs(db, %* {
+      docs[0]["id"].str: [docs[0]["rev"].str]
+    })
+
+  testAPI "revs diff":
+    discard cc.revsDiff(db, %* {
+      docs[0]["id"].str: [docs[0]["rev"].str]
+    })
+
   const indexName = "by_age"
   var indexDdoc: string
   testAPI "create index":
@@ -216,6 +300,18 @@ suite "DOCUMENT API [unit]":
     let res= cc.getindexes(db)
 
     check ["_all_docs", indexname] in res["indexes"].mapIt it["name"].str
+
+  testAPI "get design docs":
+    check "rows" in cc.designDocs(db)
+    check "_id" in cc.getDesignDoc(db, indexddoc["_design/".len..^1])
+    discard cc.getDesignDoc(db, indexddoc["_design/".len..^1], headonly =true)
+    check "view_index" in  cc.getDesignDocInfo(db, indexddoc["_design/".len..^1])
+
+  testAPI "compact design docs":
+    cc.compactDesignDoc db, indexDdoc["_design/".len..^1]
+
+  testAPI "view clean up":
+    cc.viewCleanup db
 
   testAPI "find":
     let res = cc.find(db, %* {
@@ -237,6 +333,18 @@ suite "DOCUMENT API [unit]":
 
   testAPI "delete index":
     cc.deleteIndex(db, indexDdoc, indexname)
+
+  testAPI "purge":
+    let req = cc.purge(db, %* {
+      docs[0]["id"].str: [docs[0]["rev"].str]
+    })
+
+    check req["purged"][docs[0]["id"].str].len == 1
+
+  testAPI "purged info limit":
+    let n = cc.getPurgedInfosLimit(db)
+    cc.setPurgedInfosLimit db, n
+
 
   cc.deleteDB db
 

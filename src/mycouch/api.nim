@@ -24,6 +24,10 @@ type
     UVFalse = "false"
     UVLazy = "lazy"
 
+  ReshardStates* = enum
+    RSstopped = "stopped"
+    RSrunning = "running"
+
 using
   self: CouchDBClient
   db: string
@@ -166,7 +170,7 @@ addTestCov:
       skip
     ], defaults)
 
-    let req = self.hc.get(fmt"{self.baseUrl}/_all_dbs/?" & encodeQuery(queryParams))
+    let req = self.hc.get(fmt"{self.baseUrl}/_scheduler/jobs?" & encodeQuery(queryParams))
 
     castError req
     req.body.parseJson
@@ -185,7 +189,7 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc schedulerDoc*(self, docid; replicatorDB: string): JsonNode =
+  proc getSchedulerDoc*(self;replicatorDB, docid: string, ): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_scheduler-docs-replicator_db-docid
     let req = self.hc.get(fmt"{self.baseUrl}/_scheduler/docs/{replicatorDB}/{docid}")
 
@@ -219,7 +223,7 @@ addTestCov:
 
     castError req
 
-  ## maybeTODO: https://docs.couchdb.org/en/latest/api/server/common.html#search-analyze
+  ## TODO: https://docs.couchdb.org/en/latest/api/server/common.html#search-analyze
 
   proc up*(self): bool =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#up
@@ -232,7 +236,7 @@ addTestCov:
     castError req
     req.body.parseJson["uuids"].mapIt it.str
 
-  proc reshard*(self): JsonNode =
+  proc getReshards*(self): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#reshard
     let req = self.hc.get(fmt"{self.baseUrl}/_reshard")
 
@@ -246,19 +250,17 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  type ReshardStates* = enum
-    stopped = "stopped"
-    running = "running"
-  proc changeReshardState*(self; state: string, state_reason = "") {.captureDefaults.} =
+  proc changeReshardState*(self; state: ReshardStates, state_reason = "") {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#put--_reshard-state
 
     let req = self.hc.put(fmt"{self.baseUrl}/_reshard/state", $ createNadd(
-      %*{"state": state},
+      %*{"state": $state},
       [state_reason],
       defaults
     ))
     castError req
 
+  # FIXME out 'get' keyword before GETs
   proc reshardJobs*(self; jobId = ""): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_reshard-jobs
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_reshard-jobs-jobid
@@ -267,8 +269,13 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc createReshadJob*(self, db; `type`, node, `range`, shard,
-      error = "") {.captureDefaults.} =
+  proc createReshardJob*(self, db;
+    `type`=  "split", 
+    node,
+    `range`, 
+    shard,
+    error = ""
+  ): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#post--_reshard-jobs
 
     let req = self.hc.post(fmt"{self.baseUrl}/_reshard/jobs", $ createNadd( %* {
@@ -278,13 +285,14 @@ addTestCov:
     defaults))
 
     castError req
+    req.body.parseJson
 
   proc deleteReshadJob*(self; jobId: string) =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#delete--_reshard-jobs-jobid
-    let req = self.hc.post(fmt"{self.baseUrl}/_reshard/jobs/{jobid}")
+    let req = self.hc.delete(fmt"{self.baseUrl}/_reshard/jobs/{jobid}")
     castError req
 
-  proc reshadJobState*(self; jobId: string): JsonNode =
+  proc getReshardJobState*(self; jobId: string): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_reshard-jobs-jobid-state
     let req = self.hc.get(fmt"{self.baseUrl}/_reshard/jobs/{jobId}/state")
     castError req
@@ -329,10 +337,8 @@ addTestCov:
     
     self.hc.headers.del "Cookie"
 
-
   # TODO proxy-auth, jwf-auth
 
- # add node = "_local"
   proc getNodeConfig*(self, node): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#get--_node-node-name-_config
     let req = self.hc.get(fmt"{self.baseUrl}/_node/{node}/_config")
@@ -384,11 +390,11 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc createDB*(self, db; q, n = -1, partioned = false) {.captureDefaults.} =
+  proc createDB*(self, db; q, n = -1, partitioned = false) {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/database/common.html#put--db
-    let req = self.hc.put(fmt"{self.baseUrl}/{db}", encodeQuery createNadd(
+    let req = self.hc.put(fmt"{self.baseUrl}/{db}?" & encodeQuery createNadd(
       newseq[DoubleStrTuple](),
-      [q, n, partioned],
+      [q, n, partitioned],
       defaults
     ))
 
@@ -620,7 +626,7 @@ addTestCov:
     let req = self.hc.delete(fmt"{self.baseUrl}/{db}/_index/{ddoc}/json/{name}")
     castError req
 
-  proc shards*(self, db): JsonNode =
+  proc getshards*(self, db): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/database/shard.html
     let req = self.hc.get(fmt"{self.baseUrl}/{db}/_shards")
 
@@ -694,19 +700,17 @@ addTestCov:
 
     castError req
 
-  proc compactDesignDoc*(self, db, ddoc): JsonNode =
+  proc compactDesignDoc*(self, db, ddoc)=
     ## https://docs.couchdb.org/en/latest/api/database/compact.html#db-compact-design-doc
     let req = self.hc.post(fmt"{self.baseUrl}/{db}/_compact/{ddoc}")
 
     castError req
-    req.body.parseJson
 
-  proc viewCleanup*(self, db): JsonNode =
+  proc viewCleanup*(self, db) =
     ## https://docs.couchdb.org/en/latest/api/database/compact.html#db-view-cleanup
     let req = self.hc.post(fmt"{self.baseUrl}/{db}/_view_cleanup")
 
     castError req
-    req.body.parseJson
 
   proc getSecurity*(self, db): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/database/security.html#get--db-_security
@@ -715,7 +719,7 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc setSecurity*(self, db; admins, members: JsonNode): JsonNode =
+  proc setSecurity*(self, db; admins, members: JsonNode)=
     ## https://docs.couchdb.org/en/latest/api/database/security.html#put--db-_security
     let req = self.hc.put(fmt"{self.baseUrl}/{db}/_security", $ %* {
       "admins": admins,
@@ -723,11 +727,10 @@ addTestCov:
     })
 
     castError req
-    req.body.parseJson
 
   proc purge*(self, db; obj: JsonNode): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/database/misc.html#db-purge
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_security", $ obj)
+    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_purge", $ obj)
 
     castError req
     req.body.parseJson
@@ -737,7 +740,7 @@ addTestCov:
     let req = self.hc.get(fmt"{self.baseUrl}/{db}/_purged_infos_limit")
 
     castError req
-    req.body.parseInt
+    req.body.strip.parseInt
 
   proc setPurgedInfosLimit*(self, db; limit: int) =
     ## https://docs.couchdb.org/en/latest/api/database/misc.html#put--db-_purged_infos_limit
@@ -745,8 +748,15 @@ addTestCov:
 
     castError req
 
-  proc revsDiff*(self, db; obj: JsonNode): JsonNode =
+  proc missingRevs*(self, db; obj: JsonNode): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/database/misc.html#db-missing-revs
+    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_missing_revs", $ obj)
+
+    castError req
+    req.body.parseJson["missing_revs"]
+
+  proc revsDiff*(self, db; obj: JsonNode): JsonNode =
+    ## https://docs.couchdb.org/en/latest/api/database/misc.html#post--db-_revs_diff
     let req = self.hc.post(fmt"{self.baseUrl}/{db}/_revs_diff", $ obj)
 
     castError req
@@ -757,7 +767,7 @@ addTestCov:
     let req = self.hc.get(fmt"{self.baseUrl}/{db}/_revs_limit")
 
     castError req
-    req.body.parseInt
+    req.body.strip.parseInt
 
   proc setRevsLimit*(self, db; limit: int) =
     ## https://docs.couchdb.org/en/latest/api/database/misc.html#put--db-_revs_limit
@@ -849,7 +859,11 @@ addTestCov:
       )
 
     castError req
-    req.body.parseJson
+
+    if headOnly:
+      %* {}
+    else:
+      req.body.parseJson
 
   proc createOrUpdateDoc*(self, db, docid; rev: string, obj: JsonNode): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/document/common.html#put--db-docid
@@ -934,7 +948,7 @@ addTestCov:
 
   # DESIGN DOCUMENTs API ------------------------------------------------------------
 
-  proc getDesignDoc*(self, db, ddoc; headOnly: static[bool] = false): JsonNode =
+  proc getDesignDoc*(self, db, ddoc; headOnly:bool = false): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#head--db-_design-ddoc
 
     let req = self.hc.request(
@@ -945,7 +959,11 @@ addTestCov:
     )
 
     castError req
-    req.body.parseJson
+
+    if headOnly:
+      %* {}
+    else:
+      req.body.parseJson
 
   proc createOrUpdateDesignDoc*(self, db;
     ddoc: string,
@@ -1153,7 +1171,7 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  # PARTIONED DATABASEs API ------------------------------------------------------------
+  # partitioned DATABASEs API ------------------------------------------------------------
 
   proc getPartitionInfo*(self, db, partition): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#get--db-_partition-partition
