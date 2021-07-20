@@ -213,12 +213,11 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc nodeRestart*(self; node = "_local"): JsonNode =
+  proc nodeRestart*(self; node = "_local")=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#node-node-name-restart
     let req = self.hc.post(fmt"{self.baseUrl}/_node/{node}/_restart")
 
     castError req
-    req.body.parseJson
 
   ## maybeTODO: https://docs.couchdb.org/en/latest/api/server/common.html#search-analyze
 
@@ -413,16 +412,53 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc allDocs*(self, db): JsonNode =
-    ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-all-docs
-    let req = self.hc.get(fmt"{self.baseUrl}/{db}/_all_docs/")
-
-    castError req
-    req.body.parseJson
-
-  proc allDocs*(self, db; keys: seq[string]): JsonNode =
+  proc allDocs*(self, db; 
+    conflicts = false,
+    descending = false,
+    startkey,
+    endkey,
+    startkey_docid,
+    endkey_docid = newJObject(),
+    group = false,
+    group_level = -1,
+    include_docs = false,
+    attachments = false,
+    att_encoding_info = false,
+    inclusive_end = true,
+    key = newJObject(),
+    keys = newJObject(),
+    limit = 0,
+    reduce = true,
+    skip = 0,
+    sorted = true,
+    stable = true,
+    update = UVTrue,
+    update_seq = false,
+  ): JsonNode {.captureDefaults.}=
     ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_all_docs/", $ %*{"keys": keys})
+    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_all_docs/", $ createNadd(%*{}, [
+      conflicts, 
+      descending,
+      startkey,
+      endkey,
+      startkey_docid,
+      endkey_docid,
+      group, 
+      group_level, 
+      include_docs,
+      attachments, 
+      att_encoding_info, 
+      inclusive_end, 
+      key, 
+      keys,
+      limit, 
+      reduce,
+      skip,
+      sorted,
+      stable,
+      update,
+      update_seq,
+    ], defaults))
 
     castError req
     req.body.parseJson
@@ -472,7 +508,8 @@ addTestCov:
 
   proc allDocs*(self, db; queries: JsonNode): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs-queries
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_all_docs/queries", $queries)
+    doAssert queries.kind == JArray
+    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_all_docs/queries", $ %* {"queries": queries})
 
     castError req
     req.body.parseJson
@@ -517,9 +554,12 @@ addTestCov:
     bookmark = "",
     update = true,
     stable = false,
-    execution_stats = false
+    execution_stats = false,
+    # explain: static[bool] = false,
+    explain = false,
   ): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/database/find.html#db-find
+    ## https://docs.couchdb.org/en/latest/api/database/find.html#post--db-_explain
     var body = (%{"selector": selector}).createNadd([
       limit,
       skip,
@@ -538,7 +578,10 @@ addTestCov:
     elif use_indexes.len != 0:
       body["use_index"] = % use_indexes
 
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_find", $body)
+    let req = self.hc.post(fmt"{self.baseUrl}/{db}/" & (
+      if explain: "_explain"
+      else: "_find"
+    ), $body)
 
     castError req
     req.body.parseJson
@@ -551,19 +594,23 @@ addTestCov:
     partitioned = false
   ): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/database/find.html#db-index
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_index", $createNadd( %* {}, [
-      ddoc,
-      name,
-      `type`,
-      partitioned
-    ], defaults))
+    doAssert index.kind == JObject
+
+    let req = self.hc.post(
+      fmt"{self.baseUrl}/{db}/_index",
+      $createNadd(%* {"index": index}, [
+        ddoc,
+        name,
+        `type`,
+        partitioned
+      ], defaults))
 
     castError req
     req.body.parseJson
 
   proc getIndexes*(self, db): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/database/find.html#get--db-_index
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_index")
+    let req = self.hc.get(fmt"{self.baseUrl}/{db}/_index")
 
     castError req
     req.body.parseJson
@@ -572,12 +619,6 @@ addTestCov:
     ## https://docs.couchdb.org/en/latest/api/database/find.html#delete--db-_index,ddoc;json-name
     let req = self.hc.delete(fmt"{self.baseUrl}/{db}/_index/{ddoc}/json/{name}")
     castError req
-
-  proc explain*(self, db): JsonNode =
-    let req = self.hc.get(fmt"{self.baseUrl}/{db}/_explain")
-
-    castError req
-    req.body.parseJson
 
   proc shards*(self, db): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/database/shard.html
@@ -593,12 +634,11 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc syncShards*(self, db, docId): JsonNode =
+  proc syncShards*(self, db)=
     ## https://docs.couchdb.org/en/latest/api/database/shard.html#db-sync-shards
     let req = self.hc.post(fmt"{self.baseUrl}/{db}/_sync_shards")
 
     castError req
-    req.body.parseJson
 
   proc changes*(self, db;
       handleChanges: proc(data: JsonNode),
@@ -648,12 +688,11 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc compact*(self, db): JsonNode =
+  proc compact*(self, db) =
     ## https://docs.couchdb.org/en/latest/api/database/compact.html#db-compact
     let req = self.hc.post(fmt"{self.baseUrl}/{db}/_compact")
 
     castError req
-    req.body.parseJson
 
   proc compactDesignDoc*(self, db, ddoc): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/database/compact.html#db-compact-design-doc
@@ -745,7 +784,7 @@ addTestCov:
   ): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/local.html#db-local-docs
 
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_design_docs/", $ createNadd( %* {}, [
+    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_local_docs/", $ createNadd( %* {}, [
       conflicts,
       descending,
       startkey,
@@ -985,6 +1024,7 @@ addTestCov:
     castError req
     req.body.parseJson
 
+  # FIXME match with allDocs 
   proc getView*(self, db, ddoc, view;
     conflicts = false,
     descending = false,

@@ -1,4 +1,4 @@
-import unittest, httpcore, json, sequtils, strutils, strformat, sets
+import unittest, httpcore, json, sequtils, strutils, strformat, sets, os
 import coverage
 import mycouch/[api, private/exceptions]
 
@@ -61,11 +61,21 @@ suite "SERVER API [unit]":
     check cc.activeTasks().kind == JArray
 
   # nodes ----------------------------
+  
   testAPI "node status":
     check "name" in cc.nodeInfo()
 
+  testAPI "node stats":
+    discard cc.nodeStats()
+
+  testAPI "node system":
+    check "uptime" in cc.nodeSystem()
+
   testAPI "node info":
     check ["all_nodes", "cluster_nodes"] in cc.membership()
+
+  # testAPI "node restart":
+  #   cc.nodeRestart()
 
 suite "DATABASE API [unit]":
   createClient
@@ -88,6 +98,21 @@ suite "DATABASE API [unit]":
     let res2 = cc.DBsInfo dbNames
     check (res2.mapIt it["key"].str) == dbNames.toseq
 
+  testAPI "compact DB":
+    cc.compact(db1)
+
+  testAPI "local docs":
+    discard cc.getLocalDocs(db1)
+
+  testAPI "replicate":
+    discard cc.replicate(
+      dbnames[0],
+      dbnames[1],
+    )
+
+  testAPI "sync shards":
+    cc.syncShards(db1)
+
   testAPI "delete DB":
     for db in dbNames:
       cc.deleteDB(db)
@@ -99,12 +124,10 @@ suite "DATABASE API [unit]":
 
 suite "DOCUMENT API [unit]":
   createClient
-  
   const db = "doc_api_test"
-  var docId, docRev: string
-
   cc.createDB db
 
+  var docId, docRev: string
   testAPI "create Doc":
     let res = cc.createDoc(db, %*{
       "job-title": "programmer",
@@ -123,23 +146,25 @@ suite "DOCUMENT API [unit]":
     docRev = res["rev"].str
     check cc.getDoc(db, docid, docrev)["name"].str == "ali"
 
+  testAPI "shards doc":
+    check "range" in cc.shardsDoc(db, docid)
+
   testAPI "delete Doc":
     cc.deleteDoc(db, docid, docrev)
 
     expect CouchDBError:
       discard cc.getDoc(db, docid)
 
-  # testAPI "copy doc":
-  #   let docid = 
-  #     cc.createDoc(db, %* {"name": "hamid"})["id"].str
-
-  #   let cpDocid = cc.uuids[0]
-  #   let res = cc.copyDoc(db, docid, cpDocid)
-
-  #   check res["id"].str == cpdocid
+  #[
+  testAPI "copy doc":
+    let docid = 
+      cc.createDoc(db, %* {"name": "hamid"})["id"].str
+    let cpDocid = cc.uuids[0]
+    let res = cc.copyDoc(db, docid, cpDocid)
+    check res["id"].str == cpdocid
+  ]#
 
   var docs: JsonNode
-
   testAPI "bulk Docs":
     docs = cc.bulkDocs(db, %* [
       {
@@ -148,7 +173,7 @@ suite "DOCUMENT API [unit]":
       },
       {
         "name": "reza",
-        "age": 24
+        "age": 17
       },
       {
         "name": "ahmed",
@@ -161,7 +186,57 @@ suite "DOCUMENT API [unit]":
     let names = res.mapIt it["docs"][0]["ok"]["name"].str
 
     check ["mahdi" ,"reza", "ahmed"] in names
-  
+
+  testAPI "all docs":
+    template checkNames(allDocs)=
+      let names = allDocs.filterIt(it["doc"].hasKey "name").mapIt(it["doc"]["name"].str)
+      check ["mahdi" ,"reza", "ahmed"] in names
+      
+    let res = cc.allDocs(db, include_docs=true)
+    checkNames res["rows"]
+
+    # -----------------------------------------
+
+    let req = cc.allDocs(db, %* [
+      { "include_docs": true }
+    ])
+    checkNames req["results"][0]["rows"]
+
+  const indexName = "by_age"
+  var indexDdoc: string
+  testAPI "create index":
+    let res = cc.createIndex(db, %* {
+      "fields": ["age"]
+    }, name = indexname)
+
+    indexDdoc = res["id"].str
+    discard cc.getDoc(db, res["id"].str)
+    
+  testAPI "get index list":
+    let res= cc.getindexes(db)
+
+    check ["_all_docs", indexname] in res["indexes"].mapIt it["name"].str
+
+  testAPI "find":
+    let res = cc.find(db, %* {
+      "age": {"$gt": 19}
+    },
+    fields= @["name", "age"],
+    use_index = indexname)
+
+    check:
+      res["docs"].len > 0
+      res["docs"].allIt it["age"].getInt > 19
+
+  testAPI "explain":
+    let res = cc.find(db, %* {
+      "age": {"$gt": 19}
+    }, explain= true)
+
+    check "index" in res
+
+  testAPI "delete index":
+    cc.deleteIndex(db, indexDdoc, indexname)
 
   cc.deleteDB db
 
