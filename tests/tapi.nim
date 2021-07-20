@@ -90,10 +90,26 @@ suite "SERVER API [unit]":
     check "uptime" in cc.nodeSystem()
 
   testAPI "node config":
-    check "httpd" in cc.getNodeConfig mainNode
+    let req = cc.getNodeConfig mainNode
+    check "log" in req
 
+  testAPI "get node section config":
+    let req = cc.getNodeSectionConfig(mainnode, "log")
+    check "writer" in req
+  
+  testAPI "get node section config key":
+    let req = cc.getNodeSectionKeyConfig(mainnode, "log", "writer")
+    check req.str in ["stderr","file","syslog","journald"]
+
+  testAPI "update node section config key":
+    discard cc.updateNodeSectionKeyConfig(mainnode, "log", "writer", "syslog".newJString)
+
+  testAPI "delete node section config key":
+    let req = cc.deleteNodeSectionKeyConfig(mainnode, "log", "writer")
+    check req.str == "syslog"
+  
   testAPI "reload config":
-    cc.reloadConfigs("_local")
+    cc.reloadConfigs(mainNode)
 
   # testAPI "node restart":
   #   cc.nodeRestart()
@@ -173,10 +189,11 @@ suite "DATABASE API [unit]":
     let res = cc.reshardJobs
     check "jobs" in res
     reshardJob1id = res["jobs"][0]["id"].str
+    
+    check "state" in cc.getReshardJobState reshardJob1id
 
   testAPI "change reshard job state":
-    let res = cc.getReshardJobState reshardJob1id
-    cc.changeReshardJobState reshardJob1id, res["state"].str
+    cc.changeReshardJobState reshardJob1id, "stopped"
 
   testAPI "reshard delete job":
     cc.deleteReshadJob reshardJob1id

@@ -346,30 +346,32 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc getNodeSetionConfig*(self, node, section; ): JsonNode =
+  proc getNodeSectionConfig*(self, node, section; ): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#node-node-name-config-section
     let req = self.hc.get(fmt"{self.baseUrl}/_node/{node}/_config/{section}")
 
     castError req
     req.body.parseJson
 
-  proc getNodeSetionKeyConfig*(self, node, section; key: string): JsonNode =
+  proc getNodeSectionKeyConfig*(self, node, section; key: string): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#get--_node-node-name-_config-section-key
     let req = self.hc.get(fmt"{self.baseUrl}/_node/{node}/_config/{section}/{key}")
 
     castError req
+    req.body.parseJson
 
-  proc updateNodeSetionKeyConfig*(self, node, section; key: string,
-      newval: auto) =
+  # FIXME bug report also for 'auto' argument
+  proc updateNodeSectionKeyConfig*(self, node, section; key: string, newval: JsonNode): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#get--_node-node-name-_config-section-key
-    let req = self.hc.put(fmt"{self.baseUrl}/_node/{node}/_config/{section}/{key}",
-        $ % newval)
+    let req = self.hc.put(fmt"{self.baseUrl}/_node/{node}/_config/{section}/{key}", $ newval)
     castError req
+    req.body.parseJson
 
-  proc deleteNodeSetionKeyConfig*(self, node, section; key: string) =
-    ## https://docs.couchdb.org/en/latest/api/server/configuration.html#get--_node-node-name-_config-section-key
+  proc deleteNodeSectionKeyConfig*(self, node, section; key: string): JsonNode =
+    ## https://docs.couchdb.org/en/latest/api/server/configuration.html#delete--_node-node-name-_config-section-key
     let req = self.hc.delete(fmt"{self.baseUrl}/_node/{node}/_config/{section}/{key}")
     castError req
+    req.body.parseJson
 
   proc reloadConfigs*(self, node) =
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#get--_node-node-name-_config-section-key
