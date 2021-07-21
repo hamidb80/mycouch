@@ -5,6 +5,9 @@ template checkPJ(query, json: untyped): untyped = # checkPsOverJson
   check PS(query) == ( %* json)
 
 suite "parse selector":
+  test "not specefic search":
+    checkPJ nil, {"_id": {"$gt": nil}}
+
   test "commmon comparition":
     checkPJ @year < 10, {"year": {"$lt": 10}}
     checkPJ @year <= 10, {"year": {"$lte": 10}}

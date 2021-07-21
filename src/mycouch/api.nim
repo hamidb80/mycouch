@@ -48,7 +48,7 @@ using
 # CLIENT OBJECT -----------------------------------------------
 
 proc newCouchDBClient*(host: string = "http://localhost", port = 5984): CouchDBClient =
-  ## creates new couchdb client - used for APIs
+  ## creates new couchdb client - it is used for APIs
   var client = newHttpClient()
   client.headers = newHttpHeaders({"Content-Type": "application/json"})
 
@@ -66,10 +66,6 @@ proc changeHeaders(
 template castError(res: Response) =
   if not res.code.is2xx:
     raise newCouchDBError(res.code, res.body.parseJson)
-
-  # TODO: BUG REPORT
-  # if code(res).int >= 300:
-  #   raise newCouchDBError(code(res), res.body.parseJson)
 
 # SERVER API ----------------------------------------------------------------------
 addTestCov:
@@ -266,7 +262,6 @@ addTestCov:
     ))
     castError req
 
-  # FIXME out 'get' keyword before GETs
   proc reshardJobs*(self; jobId = ""): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_reshard-jobs
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_reshard-jobs-jobid
@@ -366,7 +361,6 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  # FIXME bug report also for 'auto' argument
   proc updateNodeSectionKeyConfig*(self, node, section; key: string, newval: JsonNode): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#get--_node-node-name-_config-section-key
     let req = self.hc.put(fmt"{self.baseUrl}/_node/{node}/_config/{section}/{key}", $ newval)
@@ -724,7 +718,6 @@ addTestCov:
     castError req
 
   # DOCUMENTs API & LOCAL DOCUMENTs API ---------------------------------------------------
-  # TODO check if it is the same as 'find'
   proc getLocalDocs*(self, db;
     conflicts,
     descending = false,
@@ -761,7 +754,6 @@ addTestCov:
     req.body.parseJson
 
   ## for local APIs, append `doc_id` to`_local` : "_local/{doc_id}"
-  # TODO:bug report: headOnly: static[bool] = false,
   proc getDoc*(self, db, docid; rev="", headOnly: bool = false,
     attachments,
     att_encoding_info = false,
@@ -821,23 +813,25 @@ addTestCov:
 
     castError req
 
-  proc copyDoc*(self, db, docid; destination: string,
-    rev = "",
-    batch = BVNon
-  ): JsonNode {.captureDefaults.} =
-    ## https://docs.couchdb.org/en/latest/api/document/common.html#copy--db-docid
-    ## https://docs.couchdb.org/en/latest/api/local.html#copy--db-_local-docid
-    var queryParams = newseq[DoubleStrTuple]().createNadd([rev, batch], defaults)
+  # FIXME httpclient dosen't support custom httpmethod
+  #[
+    proc copyDoc*(self, db, docid; destination: string,
+      rev = "",
+      batch = BVNon
+    ): JsonNode {.captureDefaults.} =
+      ## https://docs.couchdb.org/en/latest/api/document/common.html#copy--db-docid
+      ## https://docs.couchdb.org/en/latest/api/local.html#copy--db-_local-docid
+      var queryParams = newseq[DoubleStrTuple]().createNadd([rev, batch], defaults)
 
-    # FIXME httpclient dosen't support custom httpmethod
-    let req = self.hc.request(
-      fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams),
-      httpMethod = "COPY", # compiler complains about deprecation
-      headers = changeHeaders(self.hc.headers, [("Destination", destination)])
-    )
+      let req = self.hc.request(
+        fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams),
+        httpMethod = "COPY", # compiler complains about deprecation
+        headers = changeHeaders(self.hc.headers, [("Destination", destination)])
+      )
 
-    castError req
-    req.body.parseJson
+      castError req
+      req.body.parseJson
+  ]#
 
   proc getDocAtt*(self, db, docid, attname;
     headOnly = false,

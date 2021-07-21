@@ -1,21 +1,38 @@
-## apis like update withiout having rev ,...
-
-import json
-import api
+import json, sequtils, httpcore
+import api, private/exceptions
 
 # wrappers -----------------------------------------------------------
 
-template TryIfErrorOccored(tryAgainPred, body: untyped): untyped
-
-template authCheck(attempts = 2, body: untyped): untyped
-
+template cookieAuthWrapper*(attempts = 2, name,pass:string, self: CouchDBClient, body: untyped): untyped=
+  try: 
+    body
+  except CouchDBError e:
+    if e.responseCode == Http401:
+      discard self.cookieAuthenticate(admin, pass)
+      
+      for _ in 2..2:
+        body
+    
 # functionalities ----------------------------------------------------
 
-proc bulkDelete(self; docIds: seq[string])
+proc deleteById*(self, db, docid)=
+  let req = self.getDoc(db, docid)
+  self.createOrUpdateDoc(db, docid, req["_rev"].str, %* {"_deleted": true})
 
-proc updateById(self, docid, newDoc: JsonNode)
+proc bulkDelete*(self, db; docIds: seq[string]): JsonDocs=
+  let query = % docsId.mapIt %* {"_id": it}
+  docRevs = self.bulkGet(db, {"docs": query})["results"].mapIt %* { 
+    "_id": it["id"], 
+    "_rev": it["docs"][0]["ok"]["_rev"],
+    "_deleted": true
+  }
 
-proc getNupdate(self; rev: string, fn: proc(doc: JsonNode): JsonNode): bool
+  self.bulkDocs(db, docsRev)
+  
+proc updateById(self,db, docid; newDoc: JsonNode): JsonDocs=
+  let docrev = self.getDoc(db, docid)["_rev"]
+  self.createOrUpdateDoc(db, docid, docrev, newDoc)
 
-proc deleteById(self, docid)
-
+proc getNupdate*(self, db, docid: string, fn: proc(doc: JsonNode): JsonNode, docrev= ""): JsonNode=
+  let req = self.getDoc(db, docid, docrev)
+  self.createOrUpdateDoc(db, docid, req["_rev"].str, fn(req))

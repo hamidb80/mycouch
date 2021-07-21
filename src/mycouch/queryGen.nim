@@ -1,7 +1,7 @@
 import
   macros, macroutils,
   json, strformat, strutils, sequtils
-import ./private/utils
+import api, ./private/utils
 
 func parseIdent(exp: NimNode): NimNode =
   if exp.kind == nnkPrefix:
@@ -19,14 +19,11 @@ func parseIdent(exp: NimNode): NimNode =
       return (exp[1].mapIt it.strVal).join.newStrLitNode
     else:
       return exp[1].strVal.newStrLitNode
-
+  
   elif exp.kind == nnkIdent:
     return exp
-
   else:
     raise newException(ValueError, fmt"unexpected NimNode '{exp.kind}' as an ident")
-
-#TODO: add type assersions
 
 func parse(exp: NimNode): NimNode =
   case exp.kind:
@@ -190,8 +187,6 @@ proc mango*(
     stable,
     execution_stats,
   ], defaults)
-
-import api
 
 proc viewQuery*(
   conflicts = false,

@@ -51,6 +51,8 @@ you can put the query im 2 ways: [`PS` is an alias for `parseSelector`]
 
 ```nim
 PS:
+  nil                         # {"_id": {"$gt": nil}}
+
   # comparisions < <= == != >= >
   @year < bad_year            # year is a field
   name == "hamid"             # notice: name is a var name
@@ -80,7 +82,7 @@ PS:
 ```
 
 # TODOs
- - [ ] gen doc page
+ - [ ] gen doc pages
  - [ ] add async
 
 # Notes

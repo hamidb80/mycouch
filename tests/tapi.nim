@@ -9,7 +9,6 @@ let
   upass = getEnv "COUCHDB_ADMIN_PASS"
 
 if uname.len * upass.len == 0:
-  echo (uname, upass)
   quit("'COUCHDB_ADMIN_NAME' & 'COUCHDB_ADMIN_PASS' must be set")
 
 # -----------------------------------------
