@@ -7,7 +7,7 @@ currently it's based on CouchDB `v3.1.1`
 
 # APIs
 **How can I know what `proc` for API should I use?**
-1. you go to the coucdb documentation
+1. you go to the coucdb documentation [[github-page](https://hamidb80.github.io/mycouch/)]
 2. copy a API link (eg: `api/ddoc/render.html#db-design-design-doc-update-update-name`)
 3. search that link in the `couchdb/api.nim`
 4. you found the corresponding proc!
