@@ -7,6 +7,10 @@ import coverage
 type DoubleStrTuple* = tuple[key: string, val: string]
 
 macro captureDefaults*(routine): untyped =
+  when defined(docs):
+    routine[^1] = routine[^1].extractDocCommentsAndRunnables
+    return routine
+
   ## this macro captures all default valued arguments and save them in a let defaults: tulple[arg1: defaultVal, arg2: ...,]
   ## in the head of the routine
 
@@ -47,6 +51,9 @@ macro captureDefaults*(routine): untyped =
 
 macro addTestCov*(body): untyped=
   # TODO: add cov pragma only if custom test flags are provided
+  when not defined(test): 
+    return body
+
   body.expectKind nnkStmtList
 
   for prc in body:

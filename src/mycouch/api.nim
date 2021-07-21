@@ -48,6 +48,7 @@ using
 # CLIENT OBJECT -----------------------------------------------
 
 proc newCouchDBClient*(host: string = "http://localhost", port = 5984): CouchDBClient =
+  ## creates new couchdb client - used for APIs
   var client = newHttpClient()
   client.headers = newHttpHeaders({"Content-Type": "application/json"})
 
@@ -62,7 +63,7 @@ proc changeHeaders(
   for (key, val) in changedData:
     result.add key, val
 
-template castError*(res: Response) =
+template castError(res: Response) =
   if not res.code.is2xx:
     raise newCouchDBError(res.code, res.body.parseJson)
 
@@ -71,7 +72,6 @@ template castError*(res: Response) =
   #   raise newCouchDBError(code(res), res.body.parseJson)
 
 # SERVER API ----------------------------------------------------------------------
-
 addTestCov:
   proc serverInfo*(self): JsonNode=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#api-server-root
@@ -183,6 +183,7 @@ addTestCov:
   proc schedulerDocs*(self; replicatorDB, doc_id = "", limit, skip = 0, ): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#scheduler-docs
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_scheduler-docs-replicator_db
+    
     let req = self.hc.get(
       fmt"{self.baseUrl}/_scheduler/docs" & (
         if replicatorDB != "": fmt"/{replicatorDB}"
