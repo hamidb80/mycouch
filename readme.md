@@ -4,6 +4,16 @@
 
   **note:** deprecated APIs are not included
 
+# APIs
+how can i know what `proc` should i use?
+1. you go to the coucdb documentation
+2. copy a API link (eg: `api/ddoc/render.html#db-design-design-doc-update-update-name`)
+3. search that link in the couchdb/api.nim
+4. you found the corresponding function!
+
+**note**: examples are placed in `tests/tapi.nim`
+
+# features:
 ## mango query lang:
   ```nim
     mango(
@@ -27,9 +37,6 @@
       "fields": ["name", "stars"]
     }
   ```
-
-### Usage:
-TODO: show api doc link here
 
 #### parse selector:
 you can put the query im 2 ways: [`PS` is an alias for `parseSelector`]
@@ -69,15 +76,12 @@ PS:
   # or not | $and $or $not
   not (@artist == "mohammadAli" and (@genre notin ["pop", "rock"] or @artist == "iman khodaee"))
   (@field == 3 and @date == 12).nor(@field == 4) # since nim doesnt have 'nor' operator | $nor
-
 ```
 
-## TODOs
- - [ ] add doc page
- - [ ] add test
+
+# TODOs
+ - [ ] gen doc page
  - [ ] add async
- - [ ] add response interfaces
 
-
-## Notes
+# Notes
 contributions are welcome :D
