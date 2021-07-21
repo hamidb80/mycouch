@@ -82,8 +82,9 @@ PS:
 ```
 
 # TODOs
- - [ ] gen doc pages
+ - [ ] add docs for all modoles
  - [ ] add async
+ - [ ] make a powerful helper module
 
 # Notes
 contributions are welcome :D
