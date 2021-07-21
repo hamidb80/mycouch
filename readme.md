@@ -1,15 +1,16 @@
 # myCouch
-  CouchDB client wrtten in Nim
-  currently it's based on CouchDB `v3.1.1`
+CouchDB client wrtten in Nim.
 
-  **note:** deprecated APIs are not included
+currently it's based on CouchDB `v3.1.1`
+
+**note:** deprecated APIs are not included
 
 # APIs
-how can i know what `proc` should i use?
+**How can I know what `proc` for API should I use?**
 1. you go to the coucdb documentation
 2. copy a API link (eg: `api/ddoc/render.html#db-design-design-doc-update-update-name`)
-3. search that link in the couchdb/api.nim
-4. you found the corresponding function!
+3. search that link in the `couchdb/api.nim`
+4. you found the corresponding proc!
 
 **note**: examples are placed in `tests/tapi.nim`
 
@@ -77,7 +78,6 @@ PS:
   not (@artist == "mohammadAli" and (@genre notin ["pop", "rock"] or @artist == "iman khodaee"))
   (@field == 3 and @date == 12).nor(@field == 4) # since nim doesnt have 'nor' operator | $nor
 ```
-
 
 # TODOs
  - [ ] gen doc page
