@@ -1,5 +1,5 @@
 import
-  httpclient, uri,
+  httpclient, httpcore, uri,
   json, tables, strformat, strutils, sequtils
 import coverage
 import ./private/[utils, exceptions]
@@ -8,6 +8,11 @@ type
   CouchDBClient* = object
     hc*: HttpClient
     baseUrl*: string
+
+  Attachment* = object
+    etag*: string
+    contentEncoding*: string
+    content*: string
 
   FeedVariants* = enum
     FVNormal = "normal"
@@ -58,12 +63,12 @@ proc changeHeaders(
     result.add key, val
 
 template castError*(res: Response) =
-  if res.code.int >= 300:
+  if not res.code.is2xx:
     raise newCouchDBError(res.code, res.body.parseJson)
 
+  # TODO: BUG REPORT
   # if code(res).int >= 300:
   #   raise newCouchDBError(code(res), res.body.parseJson)
-
 
 # SERVER API ----------------------------------------------------------------------
 
@@ -420,57 +425,6 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc allDocs*(self, db; 
-    conflicts = false,
-    descending = false,
-    startkey,
-    endkey,
-    startkey_docid,
-    endkey_docid = newJObject(),
-    group = false,
-    group_level = -1,
-    include_docs = false,
-    attachments = false,
-    att_encoding_info = false,
-    inclusive_end = true,
-    key = newJObject(),
-    keys = newJObject(),
-    limit = 0,
-    reduce = true,
-    skip = 0,
-    sorted = true,
-    stable = true,
-    update = UVTrue,
-    update_seq = false,
-  ): JsonNode {.captureDefaults.}=
-    ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_all_docs/", $ createNadd(%*{}, [
-      conflicts, 
-      descending,
-      startkey,
-      endkey,
-      startkey_docid,
-      endkey_docid,
-      group, 
-      group_level, 
-      include_docs,
-      attachments, 
-      att_encoding_info, 
-      inclusive_end, 
-      key, 
-      keys,
-      limit, 
-      reduce,
-      skip,
-      sorted,
-      stable,
-      update,
-      update_seq,
-    ], defaults))
-
-    castError req
-    req.body.parseJson
-
   proc designDocs*(self, db;
     conflicts,
     descending = false,
@@ -510,14 +464,6 @@ addTestCov:
           self.hc.get(url)
         else:
           self.hc.post(url, $ %*{"keys": keys})
-
-    castError req
-    req.body.parseJson
-
-  proc allDocs*(self, db; queries: JsonNode): JsonNode =
-    ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs-queries
-    doAssert queries.kind == JArray
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_all_docs/queries", $ %* {"queries": queries})
 
     castError req
     req.body.parseJson
@@ -563,8 +509,7 @@ addTestCov:
     update = true,
     stable = false,
     execution_stats = false,
-    # explain: static[bool] = false,
-    explain = false,
+    explain = false, # explain: static[bool] = false,
   ): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/database/find.html#db-find
     ## https://docs.couchdb.org/en/latest/api/database/find.html#post--db-_explain
@@ -649,23 +594,23 @@ addTestCov:
     castError req
 
   proc changes*(self, db;
-      handleChanges: proc(data: JsonNode),
-      doc_ids = newseq[string](),
-      conflicts,
-      descending = false,
-      feed,
-      filter = "",
-      heartbeat = 60000,
-      include_docs,
-      attachments,
-      att_encoding_info = false,
-      `last-event-id` = 0,
-      limit = 1,
-      since = 0,
-      style: string,
-      timeout = 60000,
-      view = "",
-      seq_interval = 0,
+    handleChanges: proc(data: JsonNode),
+    doc_ids = newseq[string](),
+    conflicts,
+    descending = false,
+    feed,
+    filter = "",
+    heartbeat = 60000,
+    include_docs,
+    attachments,
+    att_encoding_info = false,
+    `last-event-id` = 0,
+    limit = 1,
+    since = 0,
+    style: string,
+    timeout = 60000,
+    view = "",
+    seq_interval = 0,
   ): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/database/shard.html#db-sync-shards
     var queryParams = newseq[DoubleStrTuple]().createNadd([
@@ -778,7 +723,7 @@ addTestCov:
     castError req
 
   # DOCUMENTs API & LOCAL DOCUMENTs API ---------------------------------------------------
-  # TODO check if it is the smae as 'getDocs'
+  # TODO check if it is the same as 'find'
   proc getLocalDocs*(self, db;
     conflicts,
     descending = false,
@@ -814,10 +759,8 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  ## to local API, append `doc_id` to`_local` : "_local/{doc_id}"
-
-  # TODO:bug report
-  # proc getDoc*(self, db, docid; headOnly: static[bool] = false,
+  ## for local APIs, append `doc_id` to`_local` : "_local/{doc_id}"
+  # TODO:bug report: headOnly: static[bool] = false,
   proc getDoc*(self, db, docid; rev="", headOnly: bool = false,
     attachments,
     att_encoding_info = false,
@@ -828,7 +771,6 @@ addTestCov:
     local_seq,
     meta = false,
     open_revs = newseq[string](),
-    all = false,
     revs,
     revs_info = false
   ): JsonNode {.captureDefaults.} =
@@ -850,9 +792,6 @@ addTestCov:
       revs_info,
     ], defaults)
 
-    if all:
-      queryParams.add ("open_revs", "all")
-
     let req = self.hc.request(
       fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams),
       httpMethod =
@@ -862,10 +801,8 @@ addTestCov:
 
     castError req
 
-    if headOnly:
-      %* {}
-    else:
-      req.body.parseJson
+    if headOnly: %* {}
+    else: req.body.parseJson
 
   proc createOrUpdateDoc*(self, db, docid; rev: string, obj: JsonNode): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/document/common.html#put--db-docid
@@ -902,12 +839,15 @@ addTestCov:
     req.body.parseJson
 
   proc getDocAtt*(self, db, docid, attname;
-    headOnly: static[bool] = false,
+    headOnly = false,
     rev = ""
-  ): JsonNode {.captureDefaults.} =
+  ): Attachment {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/document/attachments.html#head--db-docid-attname
     ## https://docs.couchdb.org/en/latest/api/document/attachments.html#get--db-docid-attname
-    var queryParams = newseq[DoubleStrTuple].createNadd([rev], defaults)
+    ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#head--db-_design-ddoc-attname
+    ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#get--db-_design-ddoc-attname
+
+    var queryParams = newseq[DoubleStrTuple]().createNadd([rev], defaults)
 
     let req = self.hc.request(
       fmt"{self.baseUrl}/{db}/{docid}/{attname}?" & encodeQuery(queryParams),
@@ -917,7 +857,10 @@ addTestCov:
       )
 
     castError req
-    req.body.parseJson
+    Attachment(
+      contentEncoding: req.headers.getOrDefault("Content-Encoding"),
+      etag: req.headers["ETag"],
+      content: req.body)
 
   proc uploadDocAtt*(self, db, docid, attname;
     contentType,
@@ -925,6 +868,7 @@ addTestCov:
     rev = ""
   ): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/document/attachments.html#put--db-docid-attname
+    ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#put--db-_design-ddoc-attname
     var queryParams = newseq[DoubleStrTuple]().createNadd([rev], defaults)
 
     let req = self.hc.request(
@@ -940,13 +884,15 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc deleteDocAtt*(self, db, docid; rev: string, batch = BVNon) {.captureDefaults.} =
+  proc deleteDocAtt*(self, db, docid, attname; rev: string, batch = BVNon): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/document/attachments.html#delete--db-docid-attname
+    ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#delete--db-_design-ddoc-attname
 
     var queryParams = @[("rev", rev)].createNadd([batch], defaults)
-    let req = self.hc.delete(fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams))
+    let req = self.hc.delete(fmt"{self.baseUrl}/{db}/{docid}/{attname}?" & encodeQuery(queryParams))
 
     castError req
+    req.body.parseJson
 
   # DESIGN DOCUMENTs API ------------------------------------------------------------
 
@@ -976,9 +922,21 @@ addTestCov:
     validate_doc_update: string,
     views: JsonNode,
     autoupdate = true,
-  ): JsonNode =
+  ): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#put--db-_design-ddoc
-    let req = self.hc.put(fmt"{self.baseUrl}/{db}/_design/{ddoc}")
+    let req = self.hc.put(fmt"{self.baseUrl}/{db}/_design/{ddoc}",$ createNadd(
+      %*{
+        "ddoc": ddoc,
+        "language": language,
+        "options": options,
+        "filters": filters,
+        "updates": updates,
+        "validate_doc_update": validate_doc_update,
+        "views": views,
+      },
+      [autoupdate],
+      defaults
+    ))
 
     castError req
     req.body.parseJson
@@ -989,53 +947,6 @@ addTestCov:
     let req = self.hc.delete(fmt"{self.baseUrl}/{db}/_design/{ddoc}")
     castError req
 
-  proc copyDesignDoc*(self, db, ddoc): JsonNode =
-    ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#copy--db-_design-ddoc
-
-    let req = self.hc.request(fmt"{self.baseUrl}/{db}/_design/{ddoc}",
-        httpMethod = "COPY")
-
-    castError req
-    req.body.parseJson
-
-  proc getDesignDocAtt*(self, db, ddoc, attname;
-    headOnly: static[bool] = false,
-    rev = ""
-  ): JsonNode {.captureDefaults.} =
-    ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#head--db-_design-ddoc-attname
-    ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#get--db-_design-ddoc-attname
-    var queryParams = newseq[DoubleStrTuple].createNadd([rev], defaults)
-
-    let req = self.hc.request(
-      fmt"{self.baseUrl}/{db}/{ddoc}/{attname}?" & encodeQuery(queryParams),
-      httpMethod =
-      if headOnly: HttpHead
-        else: HttpGet
-      )
-
-    castError req
-    req.body.parseJson
-
-  proc uploadDesignDocAtt*(self, db, ddoc, attname; contentType, content: string, rev = "") {.captureDefaults.} =
-    ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#put--db-_design-ddoc-attname
-    var queryParams = newseq[DoubleStrTuple]().createNadd([rev], defaults)
-
-    let req = self.hc.request(
-      fmt"{self.baseUrl}/{db}/{ddoc}/{attname}?" & encodeQuery(queryParams),
-      httpMethod = HttpPut,
-      headers = changeHeaders(self.hc.headers, [
-        ("Content-Type", content),
-        ("Content-Length", $content.len)
-      ])
-    )
-
-    castError req
-
-  proc deleteDesignDocAtt*(self, db, ddoc; rev: string) {.captureDefaults.} =
-    ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#delete--db-_design-ddoc-attname
-    let req = self.hc.delete(fmt"{self.baseUrl}/{db}/{ddoc}?rev={rev}")
-    castError req
-
   proc getDesignDocInfo*(self, db, ddoc): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#get--db-_design-ddoc-_info
 
@@ -1044,65 +955,22 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  # FIXME match with allDocs 
-  proc getView*(self, db, ddoc, view;
-    conflicts = false,
-    descending = false,
-    startkey,
-    endkey,
-    startkey_docid,
-    endkey_docid = newJObject(),
-    group = false,
-    group_level = -1,
-    include_docs = false,
-    attachments = false,
-    att_encoding_info = false,
-    inclusive_end = true,
-    key = newJObject(),
-    keys = newJObject(),
-    limit = 0,
-    reduce = true,
-    skip = 0,
-    sorted = true,
-    stable = true,
-    update = UVTrue,
-    update_seq = false,
-  ): JsonNode {.captureDefaults.} =
-    ## https://docs.couchdb.org/en/latest/api/ddoc/views.html#get--db-_design-ddoc-_view-view
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_view/{view}", $createNadd(%*{}, [
-      conflicts,
-      descending,
-      startkey,
-      endkey,
-      startkey_docid,
-      endkey_docid,
-      group,
-      group_level,
-      include_docs,
-      attachments,
-      att_encoding_info,
-      inclusive_end,
-      key,
-      keys,
-      limit,
-      reduce,
-      skip,
-      sorted,
-      stable,
-      update,
-      update_seq,
-    ], defaults))
+  template getViewImpl(self; url: string, obj: JsonNode): JsonNode=
+    let req = self.hc.post(
+        if "queries" in obj and obj["queries"].kind == JArray: url & "/queries"
+      else: url,
+      $obj)
 
     castError req
     req.body.parseJson
 
-  proc getView*(self, db, ddoc, view; queries: JsonNode): JsonNode =
+  proc getView*(self, db, ddoc, view; queryObj: JsonNode): JsonNode=
     ## https://docs.couchdb.org/en/latest/api/ddoc/views.html#get--db-_design-ddoc-_view-view
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_view/{view}", $
-        %* {"queries": queries})
-    castError req
-
-    req.body.parseJson
+    self.getViewImpl(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_view/{view}", queryObj)
+  
+  proc allDocs*(self, db; queryObj: JsonNode): JsonNode {.captureDefaults.}=
+    ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs
+    self.getViewImpl(fmt"{self.baseUrl}/{db}/_all_docs", queryObj)
 
   proc searchByIndex*(self, db, ddoc; index: string,
     query: string,
@@ -1157,18 +1025,21 @@ addTestCov:
 
   proc execUpdateFunc*(self, db, ddoc; `func`: string,
     body: JsonNode = newJNull(),
-    docid = ""
+    docid = "",
   ): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/ddoc/render.html#post--db-_design-ddoc-_update-func
     ## https://docs.couchdb.org/en/latest/api/ddoc/render.html#put--db-_design-ddoc-_update-func-docid
-
+    
+    # TODO
+    # X-Couch-Id
+    # X-Couch-Update-Newrev
     let req = self.hc.request(
       fmt"{self.baseUrl}/{db}/_design/{ddoc}/_update/{`func`}/{docid}",
       body = $body,
-      httpMethod = (
+      httpMethod = 
         if docid == "": HttpPost
-      else: HttpPut
-    ))
+        else: HttpPut
+    )
 
     castError req
     req.body.parseJson

@@ -1,12 +1,15 @@
-import unittest, httpcore, json, sequtils, strutils, strformat, sets, os
+import 
+  unittest, httpcore, json, sequtils, strutils, strformat, 
+  sets, os, mimetypes
 import coverage
-import mycouch/[api, private/exceptions]
+import mycouch/[api, queryGen, private/exceptions]
 
-const 
+let 
   uname = getEnv "COUCHDB_ADMIN_NAME"
   upass = getEnv "COUCHDB_ADMIN_PASS"
 
 if uname.len * upass.len == 0:
+  echo (uname, upass)
   quit("'COUCHDB_ADMIN_NAME' & 'COUCHDB_ADMIN_PASS' must be set")
 
 # -----------------------------------------
@@ -161,6 +164,8 @@ suite "DATABASE API [unit]":
       continuous = true
     )
 
+  sleep 1000 # wait for databse to perform replication
+
   var 
     scheduler_doc1Id: string
     repicatorDB: string
@@ -212,6 +217,8 @@ suite "DATABASE API [unit]":
     discard cc.getPartitionInfo(pdb, "somepartition")
     cc.deleteDB pdb
 
+  # testAPI "DB updates":
+
 suite "DOCUMENT API [unit]":
   createClient
   const db = "doc_api_test"
@@ -239,6 +246,26 @@ suite "DOCUMENT API [unit]":
 
   testAPI "shards doc":
     check "range" in cc.shardsDoc(db, docid)
+  
+  var m = newMimetypes()
+  const 
+    attname = "file1"
+    filePath = "./tests/file.txt"
+  testAPI "upload Doc attatchment":
+    let req =  cc.uploadDocAtt(db, docid, attname,
+      m.getMimeType("txt"), 
+      readfile(filePath), 
+      rev= docrev)
+
+    docrev = req["rev"].str
+
+  testAPI "get Doc attatchment":
+    let req = cc.getDocAtt(db, docid, attname)
+    check req.content == readFile(filePath)
+
+  testAPI "delete Doc attatchment":
+    let req =cc.deleteDocAtt(db, docid, attname, docrev)
+    docrev = req["rev"].str
 
   testAPI "delete Doc":
     cc.deleteDoc(db, docid, docrev)
@@ -283,14 +310,16 @@ suite "DOCUMENT API [unit]":
       let names = allDocs.filterIt(it["doc"].hasKey "name").mapIt(it["doc"]["name"].str)
       check ["mahdi" ,"reza", "ahmed"] in names
       
-    let res = cc.allDocs(db, include_docs=true)
+    let res = cc.allDocs(db, viewQuery(
+      include_docs= true
+    ))
     checkNames res["rows"]
 
     # -----------------------------------------
 
-    let req = cc.allDocs(db, %* [
+    let req = cc.allDocs(db, %*{ "queries":  [
       { "include_docs": true }
-    ])
+    ]})
     checkNames req["results"][0]["rows"]
 
   testAPI "missing revs":
@@ -341,6 +370,18 @@ suite "DOCUMENT API [unit]":
       res["docs"].len > 0
       res["docs"].allIt it["age"].getInt > 19
 
+    # --------------------------------
+
+    let req = cc.find(db, %* {
+      "age": {"$gt": 19}
+    },
+    fields= @["name", "age"],
+    use_indexes = @[indexname])
+
+    check:
+      req["docs"].len > 0
+      req["docs"].allIt it["age"].getInt > 19
+
   testAPI "explain":
     let res = cc.find(db, %* {
       "age": {"$gt": 19}
@@ -362,6 +403,7 @@ suite "DOCUMENT API [unit]":
     let n = cc.getPurgedInfosLimit(db)
     cc.setPurgedInfosLimit db, n
 
+  # testAPI "changes":
 
   cc.deleteDB db
 
@@ -370,4 +412,4 @@ when isMainModule:
   let icp = incompletelyCoveredProcs()
   echo "\n :::::: uncovered APIs :::::: " & $icp.len
   echo (icp.mapIt " - " & it.info.procName).join "\n"
-  # echo incompletelyCoveredProcs() # FIXME
+  # echo incompletelyCoveredProcs() # FIXME improve coverage api
