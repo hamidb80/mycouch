@@ -1,34 +1,21 @@
 import
   macros, macroutils,
-  json, strformat, strutils, sequtils
+  json, strformat
 import api, ./private/utils
 
 func parseIdent(exp: NimNode): NimNode =
-  # TODO: apply @-key for keys that have _ at the start: @-id => "_id"
-  # and @`key.-subkey` for nested one (.-)
-  # @`-key.-subkey` for 2
-  #[
-    AccQuoted
-      Ident "friend"
-      Ident "."
-      Ident "name"
-    
-    => "friend.name"
-  ]#
-
   case exp.kind:
   of nnkPrefix:
-    result = 
-      case exp[0].strVal:
-      of "@":
-          exp[1].strVal.newStrLitNode
-      of "@-":
-          ("_" & exp[1].strVal).newStrLitNode
-      else:
-        raise newException(ValueError, fmt"the perfix '{exp[0].strval}' is not supported as field name")
+    case exp[0].strVal:
+    of "@":
+        exp[1].strVal.newStrLitNode
+    of "@-":
+        ("_" & exp[1].strVal).newStrLitNode
+    else:
+      raise newException(ValueError, fmt"the perfix '{exp[0].strval}' is not supported for fieldnames")
   
   of nnkIdent, nnkStrLit:
-    return exp
+    exp
   else:
     raise newException(ValueError, fmt"unexpected NimNode '{exp.kind}' as an ident")
 
