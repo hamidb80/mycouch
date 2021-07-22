@@ -58,7 +58,7 @@ PS:
   field == true             # {"<THE VALUE OF VAR 'field'>": {"$eq": true}}
   @field == true            # {"field"                     : {"$eq": true}}
   @-field                   # "_field"                     : 
-  "_field._sub"             # "_field._sub"                :
+  @"_field._sub"             # "_field._sub"                :
 
   # comparisions < <= == != >= >
   @year < bad_year            # 'year' is a field / 'bad_year' is var

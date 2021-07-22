@@ -14,7 +14,7 @@ func parseIdent(exp: NimNode): NimNode =
     else:
       raise newException(ValueError, fmt"the perfix '{exp[0].strval}' is not supported for fieldnames")
   
-  of nnkIdent, nnkStrLit:
+  of nnkIdent:
     exp
   else:
     raise newException(ValueError, fmt"unexpected NimNode '{exp.kind}' as an ident")

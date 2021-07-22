@@ -14,7 +14,7 @@ suite "parse selector":
 
     checkPJ @id == 1, {"id": {"$eq": 1}}
     checkPJ @-id == 1, {"_id": {"$eq": 1}}
-    checkPJ "field.subField" == 1, {"field.subField": {"$eq": 1}}
+    checkPJ @"field.subField" == 1, {"field.subField": {"$eq": 1}}
 
   test "commmon comparition":
     checkPJ @year < 10, {"year": {"$lt": 10}}
