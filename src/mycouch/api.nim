@@ -33,6 +33,13 @@ type
     RSstopped = "stopped"
     RSrunning = "running"
 
+  PredefindReduceFunc* = enum
+    PRFsum = "_sum"
+    PRFcount = "_count"
+    PRFstats = "_stats"
+    PRFapprox_count_distinct = "_approx_count_distinct"
+
+
 using
   self: CouchDBClient
   db: string
@@ -908,38 +915,37 @@ addTestCov:
     else:
       req.body.parseJson
 
-  proc createOrUpdateDesignDoc*(self, db;
-    ddoc: string,
-    language: string,
-    options: JsonNode,
-    filters: seq[string],
-    updates: JsonNode,
-    validate_doc_update: string,
-    views: JsonNode,
+  proc createOrUpdateDesignDoc*(self, db, ddoc; rev="", language= "javascript",
+    filters= newJObject(),
+    options= newJObject(),
+    updates= newJObject(),
+    validate_doc_update= "",
+    views = newJObject(),
     autoupdate = true,
   ): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#put--db-_design-ddoc
-    let req = self.hc.put(fmt"{self.baseUrl}/{db}/_design/{ddoc}",$ createNadd(
-      %*{
-        "ddoc": ddoc,
-        "language": language,
-        "options": options,
-        "filters": filters,
-        "updates": updates,
-        "validate_doc_update": validate_doc_update,
-        "views": views,
-      },
-      [autoupdate],
-      defaults
-    ))
+      
+    var query = %*{"language": language}
+    if rev != "": query["_rev"] = % rev
+    
+    let req = self.hc.put(fmt"{self.baseUrl}/{db}/_design/{ddoc}", $createNadd(query,
+      [
+        filters,
+        options,
+        updates,
+        validate_doc_update,
+        views,
+        autoupdate,
+      ],
+      defaults))
 
     castError req
     req.body.parseJson
 
-  proc deleteDesignDoc*(self, db, ddoc) =
+  proc deleteDesignDoc*(self, db, ddoc; rev:string) =
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#delete--db-_design-ddoc
 
-    let req = self.hc.delete(fmt"{self.baseUrl}/{db}/_design/{ddoc}")
+    let req = self.hc.delete(fmt"{self.baseUrl}/{db}/_design/{ddoc}?rev={rev}")
     castError req
 
   proc getDesignDocInfo*(self, db, ddoc): JsonNode =
@@ -1021,7 +1027,7 @@ addTestCov:
   proc execUpdateFunc*(self, db, ddoc; `func`: string,
     body: JsonNode = newJNull(),
     docid = "",
-  ): JsonNode =
+  ): string =
     ## https://docs.couchdb.org/en/latest/api/ddoc/render.html#post--db-_design-ddoc-_update-func
     ## https://docs.couchdb.org/en/latest/api/ddoc/render.html#put--db-_design-ddoc-_update-func-docid
     
@@ -1037,7 +1043,7 @@ addTestCov:
     )
 
     castError req
-    req.body.parseJson
+    req.body
 
   # partitioned DATABASEs API ------------------------------------------------------------
 

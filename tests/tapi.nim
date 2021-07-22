@@ -403,6 +403,68 @@ suite "DOCUMENT API [unit]":
     let n = cc.getPurgedInfosLimit(db)
     cc.setPurgedInfosLimit db, n
 
+  const 
+    viewname = "group-by-first-letter"
+    ddoc = "my-view"
+  var ddocRev: string
+  testAPI "create design doc":
+    let req = cc.createOrUpdateDesignDoc(db, ddoc, views= %*{
+      viewname:{
+        "map": """
+          function (doc) {  
+            if (doc.name)
+              emit(doc.name[0], null);
+          }
+        """,
+
+        "reduce": $PRFcount
+        }
+    })
+
+    ddocRev = req["rev"].str
+
+    let res = cc.getDesignDoc(db, ddoc)
+    check viewname in res["views"]
+
+  testAPI "get view": # check that later ...
+    let req = cc.getView(db, ddoc, viewname, viewQuery(reduce=false))
+    echo req.pretty
+
+    let res = cc.getView(db, ddoc, viewname, viewQuery())
+    echo res.pretty
+
+  testAPI "update design doc":
+    let req = cc.createOrUpdateDesignDoc(db, ddoc,ddocrev, views= %*{
+      viewname:{
+        "map": """
+          function (doc) {}
+        """
+      }
+    })
+
+    ddocRev = req["rev"].str
+
+  testAPI "run update func":
+    discard cc.createOrUpdateDesignDoc(db, "d2", updates= %*{
+      "my-update-func": """
+        function(doc, req){
+          doc.number += 1
+          return [doc, "get it"]
+        }
+      """
+    })
+
+    discard cc.createDoc(db, %* {"_id": "test-doc","number": 1})
+    let resp = cc.execUpdateFunc(db, "d2", "my-update-func", %*{}, "test-doc")
+
+    check resp == "get it"
+
+    let req = cc.getDoc(db, "test-doc")
+    check req["number"].getInt == 2
+
+  testAPI "delete design doc":
+    cc.deleteDesignDoc(db, ddoc, ddocrev)
+
   # testAPI "changes":
 
   cc.deleteDB db

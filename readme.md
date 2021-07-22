@@ -90,6 +90,7 @@ PS:
  - [ ] add docs for all modoles
  - [ ] add async
  - [ ] make a powerful helper module
+ - [ ] add nim query-lang
 
 # Notes
 contributions are welcome :D
