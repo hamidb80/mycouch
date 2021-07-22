@@ -97,18 +97,18 @@ suite "SERVER API [unit]":
 
   testAPI "get node section config":
     let req = cc.getNodeSectionConfig(mainnode, "log")
-    check "writer" in req
-  
+    check "level" in req
+
   testAPI "get node section config key":
-    let req = cc.getNodeSectionKeyConfig(mainnode, "log", "writer")
-    check req.str in ["stderr","file","syslog","journald"]
+    let req = cc.getNodeSectionKeyConfig(mainnode, "log", "level")
+    check req.str in ["debug","info","notice","warning","warn","error","err","critical","crit","alert","emergency","emerg","none"]
 
   testAPI "update node section config key":
-    discard cc.updateNodeSectionKeyConfig(mainnode, "log", "writer", "syslog".newJString)
+    discard cc.updateNodeSectionKeyConfig(mainnode, "log", "level", "warn".newJString)
 
   testAPI "delete node section config key":
-    let req = cc.deleteNodeSectionKeyConfig(mainnode, "log", "writer")
-    check req.str == "syslog"
+    let req = cc.deleteNodeSectionKeyConfig(mainnode, "log", "level")
+    check req.str == "warn"
   
   testAPI "reload config":
     cc.reloadConfigs(mainNode)
@@ -188,19 +188,20 @@ suite "DATABASE API [unit]":
     let req = cc.createReshardJob db1
     check req.allIt it["ok"].getBool
 
-  var reshardJob1Id: string
+  var reshardJobIds: seq[string]
   testAPI "get reshard jobs":
     let res = cc.reshardJobs
     check "jobs" in res
-    reshardJob1id = res["jobs"][0]["id"].str
+    reshardJobids = (res["jobs"].mapIt it["id"].str)[^2..^1] # the 2 last jobs [added jobs]
     
-    check "state" in cc.getReshardJobState reshardJob1id
+    check "state" in cc.getReshardJobState reshardJobids[0]
 
   testAPI "change reshard job state":
-    cc.changeReshardJobState reshardJob1id, "stopped"
+    cc.changeReshardJobState reshardJobids[0], "stopped"
 
   testAPI "reshard delete job":
-    cc.deleteReshadJob reshardJob1id
+    for jid in reshardJobids:
+      cc.deleteReshadJob jid
 
   testAPI "delete DB":
     for db in dbNames:
