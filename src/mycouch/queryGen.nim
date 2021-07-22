@@ -4,23 +4,30 @@ import
 import api, ./private/utils
 
 func parseIdent(exp: NimNode): NimNode =
-  if exp.kind == nnkPrefix:
-    assert exp[0].strVal == "@"
+  # TODO: apply @-key for keys that have _ at the start: @-id => "_id"
+  # and @`key.-subkey` for nested one (.-)
+  # @`-key.-subkey` for 2
+  #[
+    AccQuoted
+      Ident "friend"
+      Ident "."
+      Ident "name"
+    
+    => "friend.name"
+  ]#
 
-    if exp[1].kind == nnkAccQuoted:
-      #[
-        AccQuoted
-          Ident "friend"
-          Ident "."
-          Ident "name"
-        
-        => "friend.name"
-      ]#
-      return (exp[1].mapIt it.strVal).join.newStrLitNode
-    else:
-      return exp[1].strVal.newStrLitNode
+  case exp.kind:
+  of nnkPrefix:
+    result = 
+      case exp[0].strVal:
+      of "@":
+          exp[1].strVal.newStrLitNode
+      of "@-":
+          ("_" & exp[1].strVal).newStrLitNode
+      else:
+        raise newException(ValueError, fmt"the perfix '{exp[0].strval}' is not supported as field name")
   
-  elif exp.kind == nnkIdent:
+  of nnkIdent, nnkStrLit:
     return exp
   else:
     raise newException(ValueError, fmt"unexpected NimNode '{exp.kind}' as an ident")

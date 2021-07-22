@@ -8,6 +8,14 @@ suite "parse selector":
   test "not specefic search":
     checkPJ nil, {"_id": {"$gt": nil}}
 
+  test "field name variants":
+    let key = "fieldName"
+    checkPJ key == 1, {"fieldName": {"$eq": 1}}
+
+    checkPJ @id == 1, {"id": {"$eq": 1}}
+    checkPJ @-id == 1, {"_id": {"$eq": 1}}
+    checkPJ "field.subField" == 1, {"field.subField": {"$eq": 1}}
+
   test "commmon comparition":
     checkPJ @year < 10, {"year": {"$lt": 10}}
     checkPJ @year <= 10, {"year": {"$lte": 10}}
@@ -15,11 +23,6 @@ suite "parse selector":
     checkPJ @year != 10, {"year": {"$ne": 10}}
     checkPJ @year >= 10, {"year": {"$gte": 10}}
     checkPJ @year > 10, {"year": {"$gt": 10}}
-
-  test "field variant":
-    let field = "fieldName"
-    checkPJ field == true, {field: {"$eq": true}}
-    checkPJ @`field.subField` == false, {"field.subField": {"$eq": false}}
 
   test "value variant":
     let value = "someValue"
@@ -46,6 +49,7 @@ suite "parse selector":
     checkPJ @field is object, {"field": {"$type": "object"}}
     checkPJ @field is array, {"field": {"$type": "array"}}
     checkPJ @field is nil, {"field": {"$type": "null"}}
+    
     let myType = "other"
     checkPJ @field is myType, {"field": {"$type": "other"}}
 

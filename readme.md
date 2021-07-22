@@ -52,11 +52,16 @@ you can put the query im 2 ways: [`PS` is an alias for `parseSelector`]
 ```nim
 PS:
   nil                         # {"_id": {"$gt": nil}}
+  
+  # field name variants
+  # since nim doesn't support underline at the first character of an identifier, you can use -
+  field == true             # {"<THE VALUE OF VAR 'field'>": {"$eq": true}}
+  @field == true            # {"field"                     : {"$eq": true}}
+  @-field                   # "_field"                     : 
+  "_field._sub"             # "_field._sub"                :
 
   # comparisions < <= == != >= >
-  @year < bad_year            # year is a field
-  name == "hamid"             # notice: name is a var name
-  @`friend.name` == "ali"     # nested field
+  @year < bad_year            # 'year' is a field / 'bad_year' is var
 
   @name =~ "ali"              # regex match | $regex
   @name =~ pat.pattern        # ""
