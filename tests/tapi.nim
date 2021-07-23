@@ -465,6 +465,8 @@ suite "DOCUMENT API [unit]":
   testAPI "delete design doc":
     cc.deleteDesignDoc(db, ddoc, ddocrev)
 
+  # TODO add test for ddoc att
+
   # testAPI "changes":
 
   cc.deleteDB db
