@@ -91,6 +91,7 @@ PS:
  - [ ] add async
  - [ ] make a powerful helper module
  - [ ] add nim query-lang
+ - [ ] add test coverage tag
 
 # Notes
 contributions are welcome :D

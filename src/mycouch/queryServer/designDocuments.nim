@@ -1,41 +1,35 @@
-import 
-  json, tables
-
 ## this file is based on following link from CouchDB documentations:
 ## https://docs.couchdb.org/en/latest/ddocs/ddocs.html#design-documents
 
-# -------------------------------------------------------
+import json, tables
+
 
 type
-  MapResult* = Table[JsonNode, seq[JsonNode]]
-  MapFun* = 
-    proc(doc: JsonNode): void {.nimcall.}
+  MapFun* =
+    proc(doc: JsonNode): seq[JsonNode] {.nimcall.}
 
-  ReduceFun* = 
-    proc(keys,  values: JsonNode, rereduce=false): JsonNode {.nimcall.}
+  ReduceFun* =
+    proc(mappedDocs: seq[JsonNode]): JsonNode {.nimcall.}
 
-  UpdateFun* = 
-    proc(doc,req: JsonNode): tuple[newDoc:JsonNode, response: string] {.nimcall.}
+  RereduceFun* =
+    proc(values: seq[JsonNode]): JsonNode {.nimcall.}
+
+  UpdateFun* =
+    proc(doc, req: JsonNode): tuple[newDoc: JsonNode, response: string] {.nimcall.}
 
   Filterfun* =
-    proc(doc,req: JsonNode): bool {.nimcall.}
+    proc(doc, req: JsonNode): bool {.nimcall.}
 
-  Forbidden*    = object of Defect
+  Forbidden* = object of Defect
   Unauthorized* = object of Defect
 
-  ValidateFun* = 
-    proc(newDoc, oldDoc, userCtx, secObj: JsonNode): bool {.nimcall.}
+  ValidateFun* =
+    proc(newDoc, oldDoc, req, sec: JsonNode) {.nimcall.}
 
 # -------------------------------------------------------
 
-var mapResult: MapResult
-proc emit(key: JsonNode, val= newJNull())=
-  if key in mapResult:
-    mapResult[key].add val
-  else:
-    mapResult[key] = @[val]
+proc log*(msg: string) =
+  echo %["log", msg]
 
-# -------------------------------------------------------
-
-proc myMapFunc(doc: JsonNode)=
-  emit(doc["key"])
+template emit*(key: JsonNode, val = newJNull()) =
+  result.add( %* [key, val])
