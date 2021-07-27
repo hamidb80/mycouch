@@ -113,9 +113,6 @@ suite "SERVER API [unit]":
   testAPI "reload config":
     cc.reloadConfigs(mainNode)
 
-  # testAPI "node restart":
-  #   cc.nodeRestart()
-
 suite "DATABASE API [unit]":
   createClient
   const 
@@ -250,7 +247,7 @@ suite "DOCUMENT API [unit]":
   var m = newMimetypes()
   const 
     attname = "file1"
-    filePath = "./tests/file.txt"
+    filePath = "./tests/assets/file.txt"
   testAPI "upload Doc attatchment":
     let req =  cc.uploadDocAtt(db, docid, attname,
       m.getMimeType("txt"), 
@@ -471,6 +468,9 @@ suite "DOCUMENT API [unit]":
 
   cc.deleteDB db
 
+test "restart":
+  createClient
+  cc.nodeRestart
 
 when isMainModule:
   let icp = incompletelyCoveredProcs()

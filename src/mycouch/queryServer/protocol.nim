@@ -11,6 +11,8 @@ template checkFuncExistance(name: string, collection: untyped)=
   if name notin collection:
     throw "func with name '" & name & "' does not exist"
 
+# -------------------------------------------------
+
 type
   Ddoc = object
     updates: Table[string, string]
@@ -22,7 +24,9 @@ var
   selectedMapFunc: MapFun
   ddocs: Table[string, Ddoc]
 
-proc dataProcessor(command: string, args: seq[JsonNode]): JsonNode =
+# -------------------------------------------------
+
+proc dataPipeline(command: string, args: seq[JsonNode]): JsonNode {.inline.}=
   case command:
   of "reset":
     selectedMapFunc = nil
@@ -117,15 +121,17 @@ proc dataProcessor(command: string, args: seq[JsonNode]): JsonNode =
 
 proc run*()=
   while true:
-    try:
-      let data = parseJson stdin.readLine
-      echo dataProcessor(data[0].str, data.getElems[1..^1])
+    echo:
+      try:
+        let data = parseJson stdin.readLine
+        dataPipeline(data[0].str, data.getElems[1..^1])
 
-    except Forbidden as e:
-      echo %*{"forbidden": e.msg}
+      except Forbidden as e:
+        %*{"forbidden": e.msg}
 
-    except Unauthorized as e:
-      echo %*{"unauthorized": e.msg}
+      except Unauthorized as e:
+        %*{"unauthorized": e.msg}
 
-    except Exception as e:
-      echo %*["error", $e.name, $e.msg]
+      except:
+        let e = getCurrentException()
+        %*["error", $e.name, e.msg]

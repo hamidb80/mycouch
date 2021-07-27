@@ -49,6 +49,7 @@ var
   filterFuncs*: FuncStore[Filterfun]
   validateFuncs*: FuncStore[ValidateFun]
 
+# ------------------------------------------------
 
 template prepare {.dirty.}=
   expectKind body, {nnkProcDef, nnkFuncDef}
@@ -56,7 +57,8 @@ template prepare {.dirty.}=
 
 template patternError {.dirty.} =
   error "pattern mismatch"
-  
+
+# ------------------------------------------------  
 
 macro mapfun*(body)=
   prepare
