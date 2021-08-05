@@ -521,48 +521,18 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc find*(self, db;
-    selector: JsonNode,
-    limit = 0,
-    skip = 0,
-    sort = newJObject(),
-    fields = newseq[string](),
-    use_index = "",
-    use_indexes = newseq[string](),
-    conflicts = false,
-    r = 1,
-    bookmark = "",
-    update = true,
-    stable = false,
-    execution_stats = false,
-    explain = false, # explain: static[bool] = false,
+  proc find*(self, db; mangoQuery: JsonNode, 
+    explain = false
   ): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/database/find.html#db-find
     ## https://docs.couchdb.org/en/latest/api/database/find.html#post--db-_explain
     ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#db-partition-partition-id-find
     ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#db-partition-partition-id-explain
-    var body = (%{"selector": selector}).createNadd([
-      limit,
-      skip,
-      sort,
-      fields,
-      conflicts,
-      r,
-      bookmark,
-      update,
-      stable,
-      execution_stats,
-    ], defaults)
-
-    if use_index != "":
-      body["use_index"] = % use_index
-    elif use_indexes.len != 0:
-      body["use_index"] = % use_indexes
 
     let req = self.hc.post(fmt"{self.baseUrl}/{db}/" & (
       if explain: "_explain"
       else: "_find"
-    ), $body)
+    ), $mangoQuery)
 
     castError req
     req.body.parseJson

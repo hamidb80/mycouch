@@ -19,7 +19,8 @@ currently it's based on CouchDB `v3.1.1`
 * __continuous feed__ API are not supported in:
   1. [documents changes](https://docs.couchdb.org/en/latest/api/database/changes.html#get--db-_changes)
   2. [database changes](https://docs.couchdb.org/en/latest/api/server/common.html#db-updates)
-* only authentication with __cookie__ is available [ `jwt` & proxy is missing ]
+* only authentication with __cookie__ is available [ `jwt` & proxy are other types ]
+* [cluster_setup](https://docs.couchdb.org/en/latest/api/server/common.html#cluster-setup) API is not available for now
 
 **note**: examples are placed in `tests/tapi.nim`
 

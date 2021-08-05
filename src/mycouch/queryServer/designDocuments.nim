@@ -52,7 +52,7 @@ template prepare {.dirty.}=
   let fname = body.name
 
 template patternError {.dirty.} =
-  error "pattern mismatch"
+  raise newException(ValueError, "not exists")
 
 # ------------------------------------------------  
 
@@ -65,7 +65,7 @@ macro mapfun*(body)=
     when `fname` is MapFun:
       mapFuncs[`fname.strval`] = `fname`
     else:
-      patternError
+      patternError      
 
 macro redfun*(body)=
   prepare

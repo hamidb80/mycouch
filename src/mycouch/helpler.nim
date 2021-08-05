@@ -1,18 +1,16 @@
 import json, sequtils, httpcore
-import api, private/exceptions
+import api
 
 # wrappers -----------------------------------------------------------
 
 template cookieAuthWrapper*(attempts = 2, name,pass:string, self: CouchDBClient, body: untyped): untyped=
-  try: 
-    body
-  except CouchDBError e:
-    if e.responseCode == Http401:
-      discard self.cookieAuthenticate(admin, pass)
-      
-      for _ in 2..2:
-        body
-    
+  for _ in 1..attempts:
+    try: 
+      body
+    except CouchDBError e:
+      if e.responseCode == Http401:
+        discard self.cookieAuthenticate(admin, pass)
+        
 # functionalities ----------------------------------------------------
 
 proc deleteById*(self, db, docid)=

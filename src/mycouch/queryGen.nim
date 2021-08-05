@@ -155,7 +155,7 @@ proc mango*(
   selector: JsonNode,
   fields = newseq[string](),
   sort= newseq[sortObj](),
-  limit: Natural = 25,
+  limit: Natural = 0,
   skip: Natural = 0,
   use_index: string= "",
   use_indexes = newseq[string](),
@@ -166,14 +166,13 @@ proc mango*(
   stable=false,
   execution_stats: bool = false
 ): JsonNode {.captureDefaults.} =
-  (%*{
+  result = (%*{
     "selector": selector,
   }).createNadd([
     fields,
     sort,
     limit,
     skip,
-    use_index,
     conflicts,
     r,
     bookmark,
@@ -181,6 +180,12 @@ proc mango*(
     stable,
     execution_stats,
   ], defaults)
+
+  if use_index != "":
+    result["use_index"] = % use_index
+  elif use_indexes.len != 0:
+    result["use_index"] = % use_indexes
+
 
 proc viewQuery*(
   conflicts = false,

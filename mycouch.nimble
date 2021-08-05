@@ -15,7 +15,10 @@ requires "https://github.com/hamidb80/coverage"
 task test, "Runs the test suite":
   exec "nim -d:test r tests/tqueryGen.nim"
   exec "nim -d:test --threads:on r tests/tapi.nim"
+  
+  exec "nim c tests/queryServerInstance.nim"
   exec "nim -d:test r tests/tqueryServer.nim"
+  exec "rm tests/queryServerInstance.exe"
 
 task gendocs, "gen docs":
   exec "nim -d:docs doc src/mycouch/api.nim"

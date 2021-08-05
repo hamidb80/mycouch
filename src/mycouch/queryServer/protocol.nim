@@ -27,20 +27,21 @@ var
 # -------------------------------------------------
 
 proc dataPipeline(command: string, args: seq[JsonNode]): JsonNode {.inline.}=
+
   case command:
   of "reset":
     selectedMapFunc = nil
     % true
 
   of "add_fun":
-    let fname = args[1].str
+    let fname = args[0].str
     checkFuncExistance fname, mapFuncs
     
     selectedMapFunc = mapFuncs[fname]
     % true
 
   of "map_doc":
-    let doc = args[1]
+    let doc = args[0]
     %* [selectedMapFunc(doc)]
 
   of "reduce":
@@ -56,14 +57,14 @@ proc dataPipeline(command: string, args: seq[JsonNode]): JsonNode {.inline.}=
       keysNids.add d[0]
       values.add d[1]
 
-    %* [true, [reduceFuncs[fname](keysNids, values, false)]]
+    %* [reduceFuncs[fname](keysNids, values, false)]
 
   of "rereduce":
     let
       fname = args[0][0].str 
       values = args[1].getElems
 
-    %* [true, [reduceFuncs[fname](@[], values, true)]]
+    %* [true, reduceFuncs[fname](@[], values, true)]
 
   of "ddoc":
     if args[0] == %"new": 

@@ -1,10 +1,10 @@
-import 
-  unittest, httpcore, json, sequtils, strutils, strformat, 
+import
+  unittest, httpcore, json, sequtils, strutils, strformat,
   threadpool, sets, os, mimetypes
 import coverage
 import mycouch/[api, queryGen]
 
-let 
+let
   uname = getEnv "COUCHDB_ADMIN_NAME"
   upass = getEnv "COUCHDB_ADMIN_PASS"
 
@@ -22,7 +22,7 @@ func contains(json: JsonNode, keys: openArray[string]): bool =
 func contains(s, keys: openArray[string]): bool =
   (s.toHashSet.intersection keys.toHashSet).len == keys.len
 
-template testAPI(name, body) {.dirty.}=
+template testAPI(name, body) {.dirty.} =
   test name:
     try:
       body
@@ -31,7 +31,7 @@ template testAPI(name, body) {.dirty.}=
       echo "details: ", e.info
       check false
 
-template createClient(cc): untyped=
+template createClient(cc): untyped =
   var cc = newCouchDBClient()
   discard cc.cookieAuthenticate(uname, upass)
 
@@ -39,10 +39,10 @@ template createClient(cc): untyped=
 
 suite "SERVER API [unit]":
   var cc = newCouchDBClient()
-  
+
   testAPI "cookie auth":
     discard cc.cookieAuthenticate(uname, upass)
-  
+
   testAPI "delete session":
     cc.deleteCookieSession
 
@@ -101,21 +101,23 @@ suite "SERVER API [unit]":
 
   testAPI "get node section config key":
     let req = cc.getNodeSectionKeyConfig(mainnode, "log", "level")
-    check req.str in ["debug","info","notice","warning","warn","error","err","critical","crit","alert","emergency","emerg","none"]
+    check req.str in ["debug", "info", "notice", "warning", "warn", "error",
+        "err", "critical", "crit", "alert", "emergency", "emerg", "none"]
 
   testAPI "update node section config key":
-    discard cc.updateNodeSectionKeyConfig(mainnode, "log", "level", "warn".newJString)
+    discard cc.updateNodeSectionKeyConfig(mainnode, "log", "level",
+        "warn".newJString)
 
   testAPI "delete node section config key":
     let req = cc.deleteNodeSectionKeyConfig(mainnode, "log", "level")
     check req.str == "warn"
-  
+
   testAPI "reload config":
     cc.reloadConfigs(mainNode)
 
 suite "DATABASE API":
   createClient cc
-  const 
+  const
     dbNames = ["sample1", "sample2"]
     db1 = dbNames[0]
     pdb = "pdb" # partitioned db
@@ -170,7 +172,7 @@ suite "DATABASE API":
 
   sleep 1000 # wait for databse to perform replication
 
-  var 
+  var
     scheduler_doc1Id: string
     repicatorDB: string
   testAPI "scheduler jobs":
@@ -198,7 +200,7 @@ suite "DATABASE API":
     let res = cc.reshardJobs
     check "jobs" in res
     reshardJobids = (res["jobs"].mapIt it["id"].str)[^2..^1] # the 2 last jobs [added jobs]
-    
+
     check "state" in cc.getReshardJobState reshardJobids[0]
 
   testAPI "change reshard job state":
@@ -211,7 +213,7 @@ suite "DATABASE API":
   testAPI "delete DB":
     for db in dbNames:
       cc.deleteDB(db)
-    
+
     let dbs = cc.allDBs
 
     check not dbNames.anyIt dbs.contains(it)
@@ -252,16 +254,16 @@ suite "DOCUMENT API":
 
   testAPI "shards doc":
     check "range" in cc.shardsDoc(db, docid)
-  
+
   var m = newMimetypes()
-  const 
+  const
     attname = "file1"
     filePath = "./tests/assets/file.txt"
   testAPI "upload Doc attatchment":
-    let req =  cc.uploadDocAtt(db, docid, attname,
-      m.getMimeType("txt"), 
-      readfile(filePath), 
-      rev= docrev)
+    let req = cc.uploadDocAtt(db, docid, attname,
+      m.getMimeType("txt"),
+      readfile(filePath),
+      rev = docrev)
 
     docrev = req["rev"].str
 
@@ -270,7 +272,7 @@ suite "DOCUMENT API":
     check req.content == readFile(filePath)
 
   testAPI "delete Doc attatchment":
-    let req =cc.deleteDocAtt(db, docid, attname, docrev)
+    let req = cc.deleteDocAtt(db, docid, attname, docrev)
     docrev = req["rev"].str
 
   testAPI "delete Doc":
@@ -306,25 +308,25 @@ suite "DOCUMENT API":
     ])
 
     let ids = docs.mapIt %*{"id": it["id"]}
-    let res  =cc.bulkGet(db, % ids)["results"]
+    let res = cc.bulkGet(db, % ids)["results"]
     let names = res.mapIt it["docs"][0]["ok"]["name"].str
 
-    check ["mahdi" ,"reza", "ahmed"] in names
+    check ["mahdi", "reza", "ahmed"] in names
 
   testAPI "all docs":
-    template checkNames(allDocs)=
+    template checkNames(allDocs) =
       let names = allDocs.filterIt(it["doc"].hasKey "name").mapIt(it["doc"]["name"].str)
-      check ["mahdi" ,"reza", "ahmed"] in names
-      
+      check ["mahdi", "reza", "ahmed"] in names
+
     let res = cc.allDocs(db, viewQuery(
-      include_docs= true
+      include_docs = true
     ))
     checkNames res["rows"]
 
     # -----------------------------------------
 
-    let req = cc.allDocs(db, %*{ "queries":  [
-      { "include_docs": true }
+    let req = cc.allDocs(db, %*{"queries": [
+      {"include_docs": true}
     ]})
     checkNames req["results"][0]["rows"]
 
@@ -347,17 +349,17 @@ suite "DOCUMENT API":
 
     indexDdoc = res["id"].str
     discard cc.getDoc(db, res["id"].str)
-    
+
   testAPI "get index list":
-    let res= cc.getindexes(db)
+    let res = cc.getindexes(db)
 
     check ["_all_docs", indexname] in res["indexes"].mapIt it["name"].str
 
   testAPI "get design docs":
     check "rows" in cc.designDocs(db)
     check "_id" in cc.getDesignDoc(db, indexddoc["_design/".len..^1])
-    discard cc.getDesignDoc(db, indexddoc["_design/".len..^1], headonly =true)
-    check "view_index" in  cc.getDesignDocInfo(db, indexddoc["_design/".len..^1])
+    discard cc.getDesignDoc(db, indexddoc["_design/".len..^1], headonly = true)
+    check "view_index" in cc.getDesignDocInfo(db, indexddoc["_design/".len..^1])
 
   testAPI "compact design docs":
     cc.compactDesignDoc db, indexDdoc["_design/".len..^1]
@@ -366,11 +368,11 @@ suite "DOCUMENT API":
     cc.viewCleanup db
 
   testAPI "find":
-    let res = cc.find(db, %* {
-      "age": {"$gt": 19}
-    },
-    fields= @["name", "age"],
-    use_index = indexname)
+    let res = cc.find(db, mango(
+      PS(@age > 19),
+      fields = @["name", "age"],
+      use_index = indexname
+    ))
 
     check:
       res["docs"].len > 0
@@ -378,20 +380,18 @@ suite "DOCUMENT API":
 
     # --------------------------------
 
-    let req = cc.find(db, %* {
-      "age": {"$gt": 19}
-    },
-    fields= @["name", "age"],
-    use_indexes = @[indexname])
+    let req = cc.find(db, mango(
+      PS(@age > 19),
+      fields = @["name", "age"],
+      use_indexes = @["name", "age"],
+    ))
 
     check:
       req["docs"].len > 0
       req["docs"].allIt it["age"].getInt > 19
 
   testAPI "explain":
-    let res = cc.find(db, %* {
-      "age": {"$gt": 19}
-    }, explain= true)
+    let res = cc.find(db, mango(PS(nil)), explain = true)
 
     check "index" in res
 
@@ -409,13 +409,13 @@ suite "DOCUMENT API":
     let n = cc.getPurgedInfosLimit(db)
     cc.setPurgedInfosLimit db, n
 
-  const 
+  const
     viewname = "group-by-first-letter"
     ddoc = "my-view"
   var ddocRev: string
   testAPI "create design doc":
-    let req = cc.createOrUpdateDesignDoc(db, ddoc, views= %*{
-      viewname:{
+    let req = cc.createOrUpdateDesignDoc(db, ddoc, views = %*{
+      viewname: {
         "map": """
           function (doc) {  
             if (doc.name)
@@ -424,7 +424,7 @@ suite "DOCUMENT API":
         """,
 
         "reduce": $PRFcount
-        }
+      }
     })
 
     ddocRev = req["rev"].str
@@ -432,17 +432,17 @@ suite "DOCUMENT API":
     let res = cc.getDesignDoc(db, ddoc)
     check viewname in res["views"]
 
-  testAPI "get view": 
+  testAPI "get view":
     # TODO check that later ...
-    let req = cc.getView(db, ddoc, viewname, viewQuery(reduce=false))
+    let req = cc.getView(db, ddoc, viewname, viewQuery(reduce = false))
     echo req.pretty
 
     let res = cc.getView(db, ddoc, viewname, viewQuery())
     echo res.pretty
 
   testAPI "update design doc":
-    let req = cc.createOrUpdateDesignDoc(db, ddoc,ddocrev, views= %*{
-      viewname:{
+    let req = cc.createOrUpdateDesignDoc(db, ddoc, ddocrev, views = %*{
+      viewname: {
         "map": """
           function (doc) {}
         """
@@ -452,7 +452,7 @@ suite "DOCUMENT API":
     ddocRev = req["rev"].str
 
   testAPI "run update func":
-    discard cc.createOrUpdateDesignDoc(db, "d2", updates= %*{
+    discard cc.createOrUpdateDesignDoc(db, "d2", updates = %*{
       "my-update-func": """
         function(doc, req){
           doc.number += 1
@@ -461,7 +461,7 @@ suite "DOCUMENT API":
       """
     })
 
-    discard cc.createDoc(db, %* {"_id": "test-doc","number": 1})
+    discard cc.createDoc(db, %* {"_id": "test-doc", "number": 1})
     let resp = cc.execUpdateFunc(db, "d2", "my-update-func", %*{}, "test-doc")
 
     check resp.body == "get it"
@@ -477,10 +477,10 @@ suite "DOCUMENT API":
   testAPI "changes":
     createClient nc
 
-    proc fake: JsonNode=
+    proc fake: JsonNode =
       {.cast(gcsafe).}:
         nc.changes(db, FVLongPoll, timeout = 5, include_docs = true)
-    
+
     let t = spawn fake()
     let newDocId = cc.createDoc(db, %* {"name": "ali"})["id"]
 
