@@ -12,13 +12,14 @@ currently it's based on CouchDB `v3.1.1`
 3. search that link in the `couchdb/api.nim` or [[github-page](https://hamidb80.github.io/mycouch/)]
 4. you found the corresponding proc!
 
-## limitation:
+## limitation
 * copy APIs are not supported:
   1. [copy document](https://docs.couchdb.org/en/latest/api/document/common.html#copy--db-docid)
   2. [copy design document](https://docs.couchdb.org/en/latest/api/ddoc/common.html#copy--db-_design-ddoc)
 * __continuous feed__ API are not supported in:
   1. [documents changes](https://docs.couchdb.org/en/latest/api/database/changes.html#get--db-_changes)
   2. [database changes](https://docs.couchdb.org/en/latest/api/server/common.html#db-updates)
+* only authentication with __cookie__ is available [ `jwt` & proxy is missing ]
 
 **note**: examples are placed in `tests/tapi.nim`
 

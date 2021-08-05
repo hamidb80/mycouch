@@ -1,8 +1,8 @@
 import 
   unittest, httpcore, json, sequtils, strutils, strformat, 
-  sets, os, mimetypes
+  threadpool, sets, os, mimetypes
 import coverage
-import mycouch/[api, queryGen, private/exceptions]
+import mycouch/[api, queryGen]
 
 let 
   uname = getEnv "COUCHDB_ADMIN_NAME"
@@ -31,7 +31,7 @@ template testAPI(name, body) {.dirty.}=
       echo "details: ", e.info
       check false
 
-template createClient {.dirty.}=
+template createClient(cc): untyped=
   var cc = newCouchDBClient()
   discard cc.cookieAuthenticate(uname, upass)
 
@@ -113,12 +113,15 @@ suite "SERVER API [unit]":
   testAPI "reload config":
     cc.reloadConfigs(mainNode)
 
-suite "DATABASE API [unit]":
-  createClient
+suite "DATABASE API":
+  createClient cc
   const 
     dbNames = ["sample1", "sample2"]
     db1 = dbNames[0]
     pdb = "pdb" # partitioned db
+
+  createClient nc
+  let dbChangeFeed = spawn nc.DBupdates(FVLongPoll, timeout = 5)
 
   testAPI "create DB":
     for db in dbNames:
@@ -127,6 +130,11 @@ suite "DATABASE API [unit]":
     let dbs = cc.allDBs
     check dbNames.allIt dbs.contains(it)
     check cc.isDBexists(db1)
+
+  testAPI "db change feed":
+    ## The existence of the "_global_changes" database is required to use this endpoint
+    let res = ^dbChangeFeed
+    check res["results"].allIt it["db_name"].str in dbnames
 
   testAPI "DBs info":
     let res1 = cc.getDBinfo db1
@@ -215,9 +223,10 @@ suite "DATABASE API [unit]":
     cc.deleteDB pdb
 
   # testAPI "DB updates":
+    # let updates = spawn cc.changes(db1, FVLongPoll)
 
-suite "DOCUMENT API [unit]":
-  createClient
+suite "DOCUMENT API":
+  createClient cc
   const db = "doc_api_test"
   cc.createDB db
 
@@ -423,7 +432,8 @@ suite "DOCUMENT API [unit]":
     let res = cc.getDesignDoc(db, ddoc)
     check viewname in res["views"]
 
-  testAPI "get view": # check that later ...
+  testAPI "get view": 
+    # TODO check that later ...
     let req = cc.getView(db, ddoc, viewname, viewQuery(reduce=false))
     echo req.pretty
 
@@ -454,7 +464,7 @@ suite "DOCUMENT API [unit]":
     discard cc.createDoc(db, %* {"_id": "test-doc","number": 1})
     let resp = cc.execUpdateFunc(db, "d2", "my-update-func", %*{}, "test-doc")
 
-    check resp == "get it"
+    check resp.body == "get it"
 
     let req = cc.getDoc(db, "test-doc")
     check req["number"].getInt == 2
@@ -464,12 +474,22 @@ suite "DOCUMENT API [unit]":
 
   # TODO add test for ddoc att
 
-  # testAPI "changes":
+  testAPI "changes":
+    createClient nc
+
+    proc fake: JsonNode=
+      {.cast(gcsafe).}:
+        nc.changes(db, FVLongPoll, timeout = 5, include_docs = true)
+    
+    let t = spawn fake()
+    let newDocId = cc.createDoc(db, %* {"name": "ali"})["id"]
+
+    echo (^t)["results"][0]["id"] == newDocId
 
   cc.deleteDB db
 
 test "restart":
-  createClient
+  createClient cc
   cc.nodeRestart
 
 when isMainModule:

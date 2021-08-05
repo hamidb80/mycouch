@@ -2,7 +2,7 @@ import
   httpclient, httpcore, uri,
   json, tables, strformat, strutils, sequtils
 import coverage
-import ./private/[utils, exceptions]
+import ./private/utils
 
 type
   CouchDBClient* = object
@@ -29,6 +29,10 @@ type
     UVFalse = "false"
     UVLazy = "lazy"
 
+  StyleVariants* = enum
+    SVMainOnly = "main_only"
+    SVAllDocs = "all_docs"
+
   ReshardStates* = enum
     RSstopped = "stopped"
     RSrunning = "running"
@@ -51,7 +55,6 @@ using
   section: string
   partition: string
 
-
 # CLIENT OBJECT -----------------------------------------------
 
 proc newCouchDBClient*(host: string = "http://localhost", port = 5984): CouchDBClient =
@@ -69,6 +72,16 @@ proc changeHeaders(
 
   for (key, val) in changedData:
     result.add key, val
+
+type 
+  CouchDBError* = object of Defect
+    responseCode*: HttpCode
+    info*: JsonNode
+
+func newCouchDBError*(respCode: HttpCode, info: JsonNode): ref CouchDBError=
+  result = newException(CouchDBError, "")
+  result.responseCode = respCode
+  result.info = info
 
 template castError(res: Response) =
   if not res.code.is2xx:
@@ -121,17 +134,21 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_cluster_setup
+  ## TODO https://docs.couchdb.org/en/latest/api/server/common.html#get--_cluster_setup
   ## https://docs.couchdb.org/en/latest/api/server/common.html#post--_cluster_setup
 
-  proc DBupdates*(self; feed: string, timeout = 60, heartbeat = 60000, since = ""): JsonNode =
+  proc DBupdates*(self; feed: FeedVariants, 
+    timeout = 60, 
+    heartbeat = 60000, 
+    since = "now"
+  ): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#db-updates
     let req = self.hc.get(fmt"{self.baseUrl}/_db_updates/?" & encodeQuery([
-      ("feed", feed),
-      ("since", since),
+      ("feed", $feed),
+      ("since", $since),
       ("timeout", $timeout),
-      ("heartbeat", $heartbeat)]
-    ))
+      ("heartbeat", $heartbeat)
+    ]))
 
     castError req
     req.body.parseJson
@@ -232,7 +249,14 @@ addTestCov:
 
     castError req
 
-  ## TODO: https://docs.couchdb.org/en/latest/api/server/common.html#search-analyze
+  proc searchAnalyze*(self; analyzer, text: string): JsonNode=
+    ## https://docs.couchdb.org/en/latest/api/server/common.html#search-analyze
+    let req = self.hc.post(fmt"{self.baseUrl}/_search_analyze", $ %*{
+      "analyzer": analyzer, "text": text
+    })
+
+    castError req
+    req.body.parseJson
 
   proc up*(self): bool =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#up
@@ -515,6 +539,8 @@ addTestCov:
   ): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/database/find.html#db-find
     ## https://docs.couchdb.org/en/latest/api/database/find.html#post--db-_explain
+    ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#db-partition-partition-id-find
+    ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#db-partition-partition-id-explain
     var body = (%{"selector": selector}).createNadd([
       limit,
       skip,
@@ -595,34 +621,31 @@ addTestCov:
 
     castError req
 
-  proc changes*(self, db;
-    handleChanges: proc(data: JsonNode),
+  proc changes*(self, db; feed: FeedVariants,
     doc_ids = newseq[string](),
     conflicts,
     descending = false,
-    feed,
     filter = "",
     heartbeat = 60000,
     include_docs,
     attachments,
     att_encoding_info = false,
     `last-event-id` = 0,
-    limit = 1,
-    since = 0,
-    since_now = false,
-    style: string,
+    limit = 0,
+    since = "now",
+    style: StyleVariants = SVMainOnly,
     timeout = -1,
     view = "",
     seq_interval = 0,
   ): JsonNode {.captureDefaults.} =
     ## https://docs.couchdb.org/en/latest/api/database/changes.html
-    var queryParams = newseq[DoubleStrTuple]().createNadd([
+    var queryParams = @[("feed", $feed)].createNadd([
       conflicts,
       descending,
-      feed,
       filter,
       heartbeat,
       include_docs,
+      style,
       attachments,
       att_encoding_info,
       `last-event-id`,
@@ -633,9 +656,6 @@ addTestCov:
       seq_interval,
     ], defaults)
 
-    if since_now:
-      queryParams.add ("since", "now")
-
     let url = fmt"{self.baseUrl}/{db}/_changes?" & encodeQuery(queryParams)
     let req =
       if docids.len != 0:
@@ -643,7 +663,6 @@ addTestCov:
       else:
         self.hc.get(url)
 
-    # FIXME
     castError req
     req.body.parseJson
 
@@ -971,10 +990,12 @@ addTestCov:
 
   proc getView*(self, db, ddoc, view; queryObj: JsonNode): JsonNode=
     ## https://docs.couchdb.org/en/latest/api/ddoc/views.html#get--db-_design-ddoc-_view-view
+    ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#db-partition-partition-design-design-doc-view-view-name
     self.getViewImpl(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_view/{view}", queryObj)
   
   proc allDocs*(self, db; queryObj: JsonNode): JsonNode {.captureDefaults.}=
     ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs
+    ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#get--db-_partition-partition-_all_docs
     self.getViewImpl(fmt"{self.baseUrl}/{db}/_all_docs", queryObj)
 
   proc searchByIndex*(self, db, ddoc; index: string,
@@ -1031,13 +1052,10 @@ addTestCov:
   proc execUpdateFunc*(self, db, ddoc; `func`: string,
     body: JsonNode = newJNull(),
     docid = "",
-  ): string =
+  ): tuple[body, id, rev: string] =
     ## https://docs.couchdb.org/en/latest/api/ddoc/render.html#post--db-_design-ddoc-_update-func
     ## https://docs.couchdb.org/en/latest/api/ddoc/render.html#put--db-_design-ddoc-_update-func-docid
     
-    # TODO
-    # X-Couch-Id
-    # X-Couch-Update-Newrev
     let req = self.hc.request(
       fmt"{self.baseUrl}/{db}/_design/{ddoc}/_update/{`func`}/{docid}",
       body = $body,
@@ -1047,7 +1065,12 @@ addTestCov:
     )
 
     castError req
-    req.body
+
+    (
+      req.body,
+      $req.headers["X-Couch-Id"],
+      $req.headers["X-Couch-Update-Newrev"]
+    )
 
   # partitioned DATABASEs API ------------------------------------------------------------
 
@@ -1057,5 +1080,3 @@ addTestCov:
 
     castError req
     req.body.parseJson
-
-  ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#get--db-_partition-partition-_all_docs
