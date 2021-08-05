@@ -2,3 +2,4 @@ play.*
 *.exe
 
 docRepo/
+.vscode

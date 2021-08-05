@@ -10,10 +10,7 @@ type
     proc(doc: JsonNode): seq[JsonNode] {.nimcall.}
 
   ReduceFun* =
-    proc(mappedDocs: seq[JsonNode]): JsonNode {.nimcall.}
-
-  RereduceFun* =
-    proc(values: seq[JsonNode]): JsonNode {.nimcall.}
+    proc(keysNids: seq[JsonNode], values: seq[JsonNode], rereduce: bool): JsonNode {.nimcall.}
 
   UpdateFun* =
     proc(doc, req: JsonNode): tuple[newDoc: JsonNode, response: string] {.nimcall.}
@@ -44,7 +41,6 @@ type
 var
   mapFuncs*: FuncStore[MapFun]
   reduceFuncs*: FuncStore[ReduceFun]
-  rereduceFuncs*: FuncStore[RereduceFun]
   updateFuncs*: FuncStore[UpdateFun]
   filterFuncs*: FuncStore[Filterfun]
   validateFuncs*: FuncStore[ValidateFun]
@@ -65,8 +61,9 @@ macro mapfun*(body)=
   
   superQuote:
     `body`
+    
     when `fname` is MapFun:
-      mapFuncs.add `fname.strval`, `fname`
+      mapFuncs[`fname.strval`] = `fname`
     else:
       patternError
 
@@ -76,17 +73,7 @@ macro redfun*(body)=
   superQuote:
     `body`
     when `fname` is ReduceFun:
-      reduceFuncs.add `fname.strval`, `fname`
-    else:
-      patternError
-
-macro reredfun*(body)=
-  prepare
-  
-  superQuote:
-    `body`
-    when `fname` is RereduceFun:
-      rereduceFuncs.add `fname.strval`, `fname`
+      reduceFuncs[`fname.strval`] = `fname`
     else:
       patternError
 
@@ -96,7 +83,7 @@ macro updatefun*(body)=
   superQuote:
     `body`
     when `fname` is UpdateFun:
-      updateFuncs.add `fname.strval`, `fname`
+      updateFuncs[`fname.strval`] = `fname`
     else:
       patternError
 
@@ -106,7 +93,7 @@ macro filterfun*(body)=
   superQuote:
     `body`
     when `fname` is Filterfun:
-      filterFuncs.add `fname.strval`, `fname`
+      filterFuncs[`fname.strval`] = `fname`
     else:
       patternError
 
@@ -116,6 +103,6 @@ macro validatefun*(body)=
   superQuote:
     `body`
     when `fname` is ValidateFun:
-      validateFuncs.add `fname.strval`, `fname`
+      validateFuncs[`fname.strval`] = `fname`
     else:
       patternError

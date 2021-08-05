@@ -1,5 +1,5 @@
 import unittest, os, json
-import mycouch/[api, queryServer]
+import mycouch/api
 
 
 let 

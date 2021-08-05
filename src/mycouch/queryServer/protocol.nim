@@ -46,16 +46,24 @@ proc dataPipeline(command: string, args: seq[JsonNode]): JsonNode {.inline.}=
   of "reduce":
     let
       fname = args[0][0].str 
-      docs = args[1].getElems
+      docs = args[1].getElems # seq of  [[key, id-of-doc], value]
+    
+    var 
+      values: seq[JsonNode]
+      keysNids: seq[JsonNode]
 
-    %* [true, [reduceFuncs[fname](docs)]]
+    for d in docs:
+      keysNids.add d[0]
+      values.add d[1]
+
+    %* [true, [reduceFuncs[fname](keysNids, values, false)]]
 
   of "rereduce":
     let
       fname = args[0][0].str 
       values = args[1].getElems
 
-    %* [true, [rereduceFuncs[fname](values)]]
+    %* [true, [reduceFuncs[fname](@[], values, true)]]
 
   of "ddoc":
     if args[0] == %"new": 
@@ -67,11 +75,11 @@ proc dataPipeline(command: string, args: seq[JsonNode]): JsonNode {.inline.}=
 
       if "filters" in ddocObj:
         for name, src in ddocObj["filters"]:
-          ddocs[ddocname].filters.add name, src.str
+          ddocs[ddocname].filters[name] = src.str
 
       if "updates" in ddocObj:
         for name, src in ddocObj["updates"]:
-          ddocs[ddocname].updates.add name, src.str
+          ddocs[ddocname].updates[name] = src.str
 
       ddocs[ddocname].mapper = ddocObj.getOrDefault("view").getOrDefault("map").getStr("")
       ddocs[ddocname].validator = ddocObj.getOrDefault("validate_doc_update").getStr("")

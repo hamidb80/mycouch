@@ -609,12 +609,13 @@ addTestCov:
     `last-event-id` = 0,
     limit = 1,
     since = 0,
+    since_now = false,
     style: string,
-    timeout = 60000,
+    timeout = -1,
     view = "",
     seq_interval = 0,
   ): JsonNode {.captureDefaults.} =
-    ## https://docs.couchdb.org/en/latest/api/database/shard.html#db-sync-shards
+    ## https://docs.couchdb.org/en/latest/api/database/changes.html
     var queryParams = newseq[DoubleStrTuple]().createNadd([
       conflicts,
       descending,
@@ -631,6 +632,9 @@ addTestCov:
       view,
       seq_interval,
     ], defaults)
+
+    if since_now:
+      queryParams.add ("since", "now")
 
     let url = fmt"{self.baseUrl}/{db}/_changes?" & encodeQuery(queryParams)
     let req =
