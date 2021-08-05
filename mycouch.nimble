@@ -1,5 +1,5 @@
 # Package
-version       = "0.3.1"
+version       = "0.3.2"
 author        = "hamidb80"
 description   = "a couchDB client written in Nim"
 license       = "MIT"

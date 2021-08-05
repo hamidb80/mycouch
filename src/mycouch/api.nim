@@ -371,15 +371,11 @@ addTestCov:
     ## https://docs.couchdb.org/en/latest/api/server/authn.html?highlight=authentication#jwt-authentication
     self.hc.headers["Authorization"] = "Bearer " & token
 
-  proc deleteCookieSession*(self) =
-    ## https://docs.couchdb.org/en/latest/api/server/authn.html#delete--_session
-    # FIXME also remove it from header
-    let req = self.hc.delete(fmt"{self.baseUrl}/_session")  
-    castError req
-    
-    self.hc.headers.del "Cookie"
-
-  # TODO proxy-auth, jwf-auth
+  proc removeAuth*(self)=
+    for k in ["Cookie", "Authorization", 
+      "X-Auth-CouchDB-Roles", "X-Auth-CouchDB-UserName", "X-Auth-CouchDB-Token"]:
+      
+      del self.hc.headers, k
 
   proc getNodeConfig*(self, node): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#get--_node-node-name-_config
@@ -1053,7 +1049,7 @@ addTestCov:
     )
 
   # partitioned DATABASEs API ------------------------------------------------------------
-
+  # FIXME add better api for partions for all docs and getview
   proc getPartitionInfo*(self, db, partition): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#get--db-_partition-partition
     let req = self.hc.get(fmt"{self.baseUrl}/{db}/_partition/{partition}")

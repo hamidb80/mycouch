@@ -44,10 +44,10 @@ suite "SERVER API [unit]":
     discard cc.cookieAuth(uname, upass)
 
   testAPI "delete session":
-    cc.deleteCookieSession
+    cc.removeAuth
 
     expect CouchDBError:
-      cc.createDB "sample1"
+      cc.createDB "dbname"
 
   discard cc.cookieAuth(uname, upass)
 
@@ -493,6 +493,7 @@ suite "DOCUMENT API":
 test "restart":
   createClient cc
   cc.nodeRestart
+
 
 when isMainModule:
   let icp = incompletelyCoveredProcs()

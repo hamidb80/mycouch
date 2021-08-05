@@ -3,7 +3,7 @@ CouchDB client wrtten in Nim.
 
 currently it's based on CouchDB `v3.1.1`
 
-**note:** deprecated APIs are not included
+**note:** deprecated & no-op APIs are not included
 
 # APIs
 **How can I know what `proc` for API should I use?**
