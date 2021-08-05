@@ -1,4 +1,4 @@
-import json, tables
+import json, tables, strutils
 import mycouch/queryServer/[protocol, designDocuments]
 
 
@@ -14,6 +14,19 @@ proc testReduce(keysNids: seq[JsonNode], values: seq[JsonNode], rereduce: bool):
     % newJNull()
   else:
     % values
+
+proc x2namex(doc, req: JsonNode): tuple[newDoc, response: JsonNode] {.updatefun.}=
+  (
+    %*{"name": doc["name"].str.repeat(2) & req["body"].str}, 
+    %*{"body": "yay"}
+  )
+
+proc isWomen(doc, req: JsonNode): bool {.filterfun.}=
+  doc["gender"].str == "female"
+
+proc remainTheSameType(newDoc, oldDoc, req, sec: JsonNode) {.validatefun.}=
+  if newDoc["type"].kind != oldDoc["type"].kind:
+    raise newException(Forbidden, "not a specefic reason") 
 
 
 when isMainModule:

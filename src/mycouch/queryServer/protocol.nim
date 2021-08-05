@@ -69,21 +69,21 @@ proc dataPipeline(command: string, args: seq[JsonNode]): JsonNode {.inline.}=
   of "ddoc":
     if args[0] == %"new": 
       let 
-        ddocName = args[1].str
+        ddocId = args[1].str
         ddocObj = args[2]
       
-      ddocs[ddocname] = Ddoc()
+      ddocs[ddocId] = Ddoc()
 
       if "filters" in ddocObj:
         for name, src in ddocObj["filters"]:
-          ddocs[ddocname].filters[name] = src.str
+          ddocs[ddocId].filters[name] = src.str
 
       if "updates" in ddocObj:
         for name, src in ddocObj["updates"]:
-          ddocs[ddocname].updates[name] = src.str
+          ddocs[ddocId].updates[name] = src.str
 
-      ddocs[ddocname].mapper = ddocObj.getOrDefault("view").getOrDefault("map").getStr("")
-      ddocs[ddocname].validator = ddocObj.getOrDefault("validate_doc_update").getStr("")
+      ddocs[ddocId].mapper = ddocObj.getOrDefault("view").getOrDefault("map").getStr("")
+      ddocs[ddocId].validator = ddocObj.getOrDefault("validate_doc_update").getStr("")
 
       return % true
 
@@ -103,7 +103,7 @@ proc dataPipeline(command: string, args: seq[JsonNode]): JsonNode {.inline.}=
 
     of "filters":
       let fn = filterFuncs[ddocs[ddocid].filters[funcname]]
-      %* [true, myArgs.mapIt fn(it, myArgs[1])]
+      %* [true, myArgs[0].mapIt fn(it, myArgs[1])]
 
     of "views":
       let fn = mapFuncs[ddocs[ddocid].mapper]
@@ -116,16 +116,16 @@ proc dataPipeline(command: string, args: seq[JsonNode]): JsonNode {.inline.}=
         req = myArgs[2]
         sec = myArgs[3]
 
-        fn = validateFuncs[funcname]
+        fn = validateFuncs[ddocs[ddocid].validator]
       
       fn(newDoc, oldDoc, req, sec)
       % 1
 
     else:
-      raise newException(ValueError, fmt"subcommand ddoc.'{subCommand}' is not supported")
+      raise newException(ValueError, fmt"subcommand ddoc.'{subCommand}' is not supported by mycouch")
 
   else:
-    raise newException(ValueError, fmt"command '{command}' is not supported")
+    raise newException(ValueError, fmt"command '{command}' is not supported by mycouch")
 
 
 proc run*()=

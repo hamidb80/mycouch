@@ -99,18 +99,20 @@ suite "SERVER API [unit]":
     let req = cc.getNodeSectionConfig(mainnode, "log")
     check "level" in req
 
+  var lastValue: string
   testAPI "get node section config key":
     let req = cc.getNodeSectionKeyConfig(mainnode, "log", "level")
     check req.str in ["debug", "info", "notice", "warning", "warn", "error",
         "err", "critical", "crit", "alert", "emergency", "emerg", "none"]
 
-  testAPI "update node section config key":
-    discard cc.updateNodeSectionKeyConfig(mainnode, "log", "level",
-        "warn".newJString)
+    lastValue = req.str
 
   testAPI "delete node section config key":
     let req = cc.deleteNodeSectionKeyConfig(mainnode, "log", "level")
-    check req.str == "warn"
+    check req.str == lastValue
+
+  testAPI "update node section config key":
+    discard cc.updateNodeSectionKeyConfig(mainnode, "log", "level", %lastValue)
 
   testAPI "reload config":
     cc.reloadConfigs(mainNode)

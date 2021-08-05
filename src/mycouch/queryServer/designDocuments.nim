@@ -13,7 +13,7 @@ type
     proc(keysNids: seq[JsonNode], values: seq[JsonNode], rereduce: bool): JsonNode {.nimcall.}
 
   UpdateFun* =
-    proc(doc, req: JsonNode): tuple[newDoc: JsonNode, response: string] {.nimcall.}
+    proc(doc, req: JsonNode): tuple[newDoc, response: JsonNode] {.nimcall.}
 
   Filterfun* =
     proc(doc, req: JsonNode): bool {.nimcall.}
