@@ -349,7 +349,7 @@ addTestCov:
     castError req
     req.body.parseJson
 
-  proc cookieAuthenticate*(self; name, password: string): JsonNode =
+  proc cookieAuth*(self; name, password: string): JsonNode =
     ## https://docs.couchdb.org/en/latest/api/server/authn.html#post--_session
     let req = self.hc.post(fmt"{self.baseUrl}/_session", $ %* {
       "name": name,
@@ -360,6 +360,16 @@ addTestCov:
     self.hc.headers.add "Cookie", req.headers["Set-Cookie"]
 
     req.body.parseJson
+
+  proc proxyAuth*(self; username, token: string, roles: seq[string])=
+    ## https://docs.couchdb.org/en/latest/api/server/authn.html?highlight=authentication#proxy-authentication
+    self.hc.headers["X-Auth-CouchDB-Roles"] = roles.join ","
+    self.hc.headers["X-Auth-CouchDB-UserName"] = username
+    self.hc.headers["X-Auth-CouchDB-Token"] = token
+
+  proc jwtAuth*(self; token: string)=
+    ## https://docs.couchdb.org/en/latest/api/server/authn.html?highlight=authentication#jwt-authentication
+    self.hc.headers["Authorization"] = "Bearer " & token
 
   proc deleteCookieSession*(self) =
     ## https://docs.couchdb.org/en/latest/api/server/authn.html#delete--_session

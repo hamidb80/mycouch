@@ -33,7 +33,7 @@ template testAPI(name, body) {.dirty.} =
 
 template createClient(cc): untyped =
   var cc = newCouchDBClient()
-  discard cc.cookieAuthenticate(uname, upass)
+  discard cc.cookieAuth(uname, upass)
 
 # -----------------------------------------
 
@@ -41,7 +41,7 @@ suite "SERVER API [unit]":
   var cc = newCouchDBClient()
 
   testAPI "cookie auth":
-    discard cc.cookieAuthenticate(uname, upass)
+    discard cc.cookieAuth(uname, upass)
 
   testAPI "delete session":
     cc.deleteCookieSession
@@ -49,7 +49,7 @@ suite "SERVER API [unit]":
     expect CouchDBError:
       cc.createDB "sample1"
 
-  discard cc.cookieAuthenticate(uname, upass)
+  discard cc.cookieAuth(uname, upass)
 
   testAPI "get session":
     check "userCtx" in cc.getCurrentSession

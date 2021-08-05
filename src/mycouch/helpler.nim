@@ -9,7 +9,7 @@ template cookieAuthWrapper*(attempts = 2, name,pass:string, self: CouchDBClient,
       body
     except CouchDBError e:
       if e.responseCode == Http401:
-        discard self.cookieAuthenticate(admin, pass)
+        discard self.cookieAuth(admin, pass)
         
 # functionalities ----------------------------------------------------
 
