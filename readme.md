@@ -96,6 +96,11 @@ PS:
   (@field == 3 and @date == 12).nor(@field == 4) # since nim doesnt have 'nor' operator | $nor
 ```
 
+## Qeury Server
+Do you remember some of [Erlang's built-in View functions](https://docs.couchdb.org/en/latest/ddocs/ddocs.html#built-in-reduce-functions)? 
+here were gonna do something like that [but in nim]
+[ TODO - for now you can look at `tests/queryServerInstance.nim`]
+
 # TODOs
  - [ ] add docs for all modoles
  - [ ] add async
