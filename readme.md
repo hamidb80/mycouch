@@ -12,7 +12,7 @@ currently it's based on CouchDB `v3.1.1`
 3. search that link in the `couchdb/api.nim` or [[github-page](https://hamidb80.github.io/mycouch/)]
 4. you found the corresponding proc!
 
-## limitation
+## Limitation
 * copy APIs are not supported:
   1. [copy document](https://docs.couchdb.org/en/latest/api/document/common.html#copy--db-docid)
   2. [copy design document](https://docs.couchdb.org/en/latest/api/ddoc/common.html#copy--db-_design-ddoc)
@@ -24,8 +24,8 @@ currently it's based on CouchDB `v3.1.1`
 
 **note**: examples are placed in `tests/tapi.nim`
 
-# features:
-## mango query lang:
+# Features
+## Mango Query-Lang
   ```nim
     mango(
       query: PS(@name == "hamid" and @year notin [1399])
@@ -49,7 +49,7 @@ currently it's based on CouchDB `v3.1.1`
     }
   ```
 
-#### parse selector:
+### SQL-like Parse Selector
 you can put the query im 2 ways: [`PS` is an alias for `parseSelector`]
 
 - `PS( <query>  )`
