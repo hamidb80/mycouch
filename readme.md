@@ -102,6 +102,7 @@ here were gonna do something like that [but in nim]
 [ TODO - for now you can look at `tests/queryServerInstance.nim`]
 
 # TODOs
+ - [ ] update docs on gh-pages
  - [ ] add docs for all modoles
  - [ ] add async
  - [ ] helper module
