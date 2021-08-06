@@ -7,7 +7,7 @@ currently it's based on CouchDB `v3.1.1`
 
 # APIs
 **How can I know what `proc` for API should I use?**
-1. you go to the CoudhDB documentation [link](http://docs.couchdb.org/en/latest/api/) 
+1. you go to the CoudhDB documentation [link](http://docs.couchdb.org/en/3.1.1/api/) 
 2. copy a API link (eg: `api/ddoc/render.html#db-design-design-doc-update-update-name`)
 3. search that link in the `couchdb/api.nim` or [[github-page](https://hamidb80.github.io/mycouch/)]
 4. you found the corresponding proc!
@@ -102,10 +102,9 @@ here were gonna do something like that [but in nim]
 
 # TODOs
  - [ ] update docs on gh-pages
- - [ ] add docs for all modoles
+ - [ ] add docs for all modules
  - [ ] add async
  - [ ] helper module
- - [ ] add nim query-lang
  - [ ] add test coverage tag
 
 # Notes
