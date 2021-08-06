@@ -15,7 +15,7 @@ proc testReduce(keysNids: seq[JsonNode], values: seq[JsonNode], rereduce: bool):
   else:
     % values
 
-proc x2namex(doc, req: JsonNode): tuple[newDoc, response: JsonNode] {.updatefun.}=
+proc `name-x2`(doc, req: JsonNode): tuple[newDoc, response: JsonNode] {.updatefun.}=
   doc["name"] = %(doc["name"].str.repeat(2) & req["body"].str)
   (
     doc, 

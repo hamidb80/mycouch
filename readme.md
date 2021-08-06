@@ -128,6 +128,7 @@ when isMainModule:
   run()
 ```
 **notes**:
+* you can use quoted names for procs like \`my-pretty-view-function\`
 * you have to import `tables` module wherever you define your entry procs
 * don't forget to call `run` proc in your code! it's starts the query server
 

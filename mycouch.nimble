@@ -12,7 +12,6 @@ requires "macroutils >= 1.2.0"
 requires "macroplus"
 requires "https://github.com/hamidb80/coverage"
 
-# TODO specify which test 
 task test, "Runs the test suite":
   exec "nim -d:test r tests/tqueryGen.nim"
   exec "nim -d:test --threads:on r tests/tapi.nim"

@@ -1,7 +1,7 @@
 ## this file is based on following link from CouchDB documentations:
 ## https://docs.couchdb.org/en/latest/ddocs/ddocs.html#design-documents
 
-import macros, json, tables, strformat
+import macros, json, tables, strformat, sequtils, strutils
 import macroutils except name
 
 
@@ -49,7 +49,14 @@ var
 
 template prepare {.dirty.}=
   expectKind body, {nnkProcDef, nnkFuncDef}
-  let fname = body.name
+
+  let 
+    fident = body[0]
+    fname = 
+      if body[0].kind == nnkIdent:
+        body[0].strVal
+      else: # nnkAccQouted
+        body[0].mapIt(it.strVal).join "" # support for quoted names
 
 macro patternError(fname: string, collection: typedesc)=
   error fmt"proc with name '{fname}' can't be matched with pattern '{$collection}'"
@@ -62,18 +69,19 @@ macro mapfun*(body)=
   superQuote:
     `body`
     
-    when `fname` is MapFun:
-      mapFuncs[`fname.strval`] = `fname`
+    when `fident` is MapFun:
+      mapFuncs[`fname.strval`] = `fident`
     else:
       patternError `fname.strval`, MapFunc
+
 
 macro redfun*(body)=
   prepare
   
   superQuote:
     `body`
-    when `fname` is ReduceFun:
-      reduceFuncs[`fname.strval`] = `fname`
+    when `fident` is ReduceFun:
+      reduceFuncs[`fname.strval`] = `fident`
     else:
       patternError `fname.strval`, ReduceFun
 
@@ -82,8 +90,8 @@ macro updatefun*(body)=
   
   superQuote:
     `body`
-    when `fname` is UpdateFun:
-      updateFuncs[`fname.strval`] = `fname`
+    when `fident` is UpdateFun:
+      updateFuncs[`fname.strval`] = `fident`
     else:
       patternError `fname.strval`, UpdateFun
 
@@ -92,8 +100,8 @@ macro filterfun*(body)=
   
   superQuote:
     `body`
-    when `fname` is Filterfun:
-      filterFuncs[`fname.strval`] = `fname`
+    when `fident` is Filterfun:
+      filterFuncs[`fname.strval`] = `fident`
     else:
       patternError `fname.strval`, Filterfun
 
@@ -102,7 +110,7 @@ macro validatefun*(body)=
   
   superQuote:
     `body`
-    when `fname` is ValidateFun:
-      validateFuncs[`fname.strval`] = `fname`
+    when `fident` is ValidateFun:
+      validateFuncs[`fname.strval`] = `fident`
     else:
       patternError `fname.strval`, ValidateFun

@@ -68,7 +68,7 @@ suite "query server":
         "_rev": "8-d7379de23a751dc2a19e5638a7bbc5cc",
         "language": "nim",
         "updates": {
-          "doubleTheNamePlusBody": "x2namex"
+          "doubleTheNamePlusBody": "name-x2"
         },
         "filters": {
           "myFilter": "isWomen"
