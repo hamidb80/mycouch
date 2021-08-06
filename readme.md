@@ -110,11 +110,11 @@ we have 5 entry points:
   5. `validatefun`  -> validate
 
 each one are name of a macro that must be associated with corresponding `proc`
-every function must be matched with it's corresponding pattern [you can see patterns in `mycouch/queryServer/designDocuments.nim`] otherwise you'll get an error.
+every proc must be matched with it's corresponding pattern [you can see patterns in `mycouch/queryServer/designDocuments.nim`] otherwise you'll get an error.
 
-here's an exmaple of function `testMap` as an map function
+here's an exmaple of proc `testMap` as an map function
 ```nim
-import json, tables, strutils
+import json, tables
 import mycouch/queryServer/[protocol, designDocuments]
 
 proc testMap(doc: JsonNode): seq[JsonNode] {.mapfun.}= 
@@ -126,6 +126,7 @@ proc testMap(doc: JsonNode): seq[JsonNode] {.mapfun.}=
 when isMainModule:
   run()
 ```
+[you have to import `tables` module wherever you define your entry procs]
 don't forget to call `run` proc in your code! it's starts the query server
 
 compile that file and config the query server [doc](https://docs.couchdb.org/en/3.1.1/config/query-servers.html#query-servers-definition)
