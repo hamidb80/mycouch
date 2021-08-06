@@ -130,7 +130,7 @@ when isMainModule:
 **notes**:
 * you can use quoted names for procs like \`my-pretty-view-function\`
 * you have to import `tables` module wherever you define your entry procs
-* don't forget to call `run` proc in your code! it's starts the query server
+* don't forget to call `run` proc in your code! it starts the query server
 
 compile that file and config the query server [doc](https://docs.couchdb.org/en/3.1.1/config/query-servers.html#query-servers-definition)
 
