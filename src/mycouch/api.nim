@@ -71,8 +71,14 @@ proc newCouchDBClient*(host: string = "http://localhost", port = 5984): CouchDBC
   ## creates new couchdb client - it is used for APIs
   var client = newHttpClient()
   client.headers = newHttpHeaders({"Content-Type": "application/json"})
-
   CouchDBClient(hc: client, baseUrl: fmt"{host}:{port}")
+
+proc newAsyncCouchDBClient*(host: string = "http://localhost", port = 5984): AsyncCouchDBClient =
+  ## creates new couchdb client - it is used for APIs
+  var client = newAsyncHttpClient()
+  client.headers = newHttpHeaders({"Content-Type": "application/json"})
+  AsyncCouchDBClient(hc: client, baseUrl: fmt"{host}:{port}")
+
 
 proc changeHeaders(
   lastHeaders: HttpHeaders,

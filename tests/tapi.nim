@@ -1,5 +1,5 @@
 import
-  unittest, httpcore, json, sequtils, strutils, strformat,
+  unittest, asyncdispatch, httpcore, json, sequtils, strutils, strformat,
   threadpool, sets, os, mimetypes
 import coverage
 import mycouch/[api, queryGen]
@@ -489,6 +489,12 @@ suite "DOCUMENT API":
     echo (^t)["results"][0]["id"] == newDocId
 
   cc.deleteDB db
+
+suite "async":
+  let acc = newAsyncCouchDBClient()
+
+  test "up":
+    check (waitFor acc.up()) == true
 
 test "restart":
   createClient cc
