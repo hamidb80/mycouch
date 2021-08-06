@@ -61,7 +61,7 @@ macro addTestCov*(body): untyped=
       if prc.pragmas.kind == nnkEmpty:
         prc.pragmas = newNimNode(nnkPragma)
 
-      prc.pragmas.add bindSym("cov")
+      prc.pragmas.insert 0, bindSym("cov")
 
   body
 

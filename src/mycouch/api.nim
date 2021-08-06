@@ -156,9 +156,9 @@ addTestCov:
     timeout = 60, 
     heartbeat = 60000, 
     since = "now"
-  ): Future[JsonNode] =
+  ): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#db-updates
-    let req = self.hc.get(fmt"{self.baseUrl}/_db_updates/?" & encodeQuery([
+    let req = await self.hc.get(fmt"{self.baseUrl}/_db_updates/?" & encodeQuery([
       ("feed", $feed),
       ("since", $since),
       ("timeout", $timeout),
@@ -166,16 +166,16 @@ addTestCov:
     ]))
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc membership*(self): JsonNode =
+  proc membership*(self: CC or AsyncCC): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#membership
-    let req = self.hc.get(fmt"{self.baseUrl}/_membership")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_membership")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc replicate*(self; source, target: string,
+  proc replicate*(self: CC or AsyncCC; source, target: string,
     cancel,
     continuous,
     create_target = false,
@@ -184,10 +184,10 @@ addTestCov:
     filter: string = "",
     source_proxy,
     target_proxy: string = ""
-  ): JsonNode {.captureDefaults.} =
+  ): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#replicate
 
-    let req = self.hc.post(fmt"{self.baseUrl}/_replicate", $ createNadd( %* {
+    let req = await self.hc.post(fmt"{self.baseUrl}/_replicate", $ createNadd( %* {
       "source": source,
       "target": target,
     }, [
@@ -200,9 +200,9 @@ addTestCov:
     ], defaults))
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc schedulerJobs*(self; limit, skip = 0): JsonNode {.captureDefaults.} =
+  proc schedulerJobs*(self: CC or AsyncCC; limit, skip = 0): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#scheduler-jobs
 
     let queryParams = newseq[DoubleStrTuple]().createNadd([
@@ -210,16 +210,16 @@ addTestCov:
       skip
     ], defaults)
 
-    let req = self.hc.get(fmt"{self.baseUrl}/_scheduler/jobs?" & encodeQuery(queryParams))
+    let req = await self.hc.get(fmt"{self.baseUrl}/_scheduler/jobs?" & encodeQuery(queryParams))
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc schedulerDocs*(self; replicatorDB, doc_id = "", limit, skip = 0, ): JsonNode {.captureDefaults.} =
+  proc schedulerDocs*(self: CC or AsyncCC; replicatorDB, doc_id = "", limit, skip = 0, ): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#scheduler-docs
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_scheduler-docs-replicator_db
     
-    let req = self.hc.get(
+    let req = await self.hc.get(
       fmt"{self.baseUrl}/_scheduler/docs" & (
         if replicatorDB != "": fmt"/{replicatorDB}"
         else:
@@ -228,128 +228,128 @@ addTestCov:
     ))
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc getSchedulerDoc*(self;replicatorDB, docid: string, ): JsonNode =
+  proc getSchedulerDoc*(self: CC or AsyncCC;replicatorDB, docid: string, ): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_scheduler-docs-replicator_db-docid
-    let req = self.hc.get(fmt"{self.baseUrl}/_scheduler/docs/{replicatorDB}/{docid}")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_scheduler/docs/{replicatorDB}/{docid}")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc nodeInfo*(self; node = "_local"): JsonNode =
+  proc nodeInfo*(self: CC or AsyncCC; node = "_local"): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#node-node-name
-    let req = self.hc.get(fmt"{self.baseUrl}/_node/{node}")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_node/{node}")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc nodeStats*(self; node = "_local"): JsonNode =
+  proc nodeStats*(self: CC or AsyncCC; node = "_local"): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#node-node-name
-    let req = self.hc.get(fmt"{self.baseUrl}/_node/{node}/_stats")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_node/{node}/_stats")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc nodeSystem*(self; node = "_local"): JsonNode =
+  proc nodeSystem*(self: CC or AsyncCC; node = "_local"): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_node-node-name-_system
-    let req = self.hc.get(fmt"{self.baseUrl}/_node/{node}/_system")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_node/{node}/_system")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc nodeRestart*(self; node = "_local")=
+  proc nodeRestart*(self: CC or AsyncCC; node = "_local") {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#node-node-name-restart
-    let req = self.hc.post(fmt"{self.baseUrl}/_node/{node}/_restart")
+    let req = await self.hc.post(fmt"{self.baseUrl}/_node/{node}/_restart")
 
     castError req
 
-  proc searchAnalyze*(self; analyzer, text: string): JsonNode=
+  proc searchAnalyze*(self: CC or AsyncCC; analyzer, text: string): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#search-analyze
-    let req = self.hc.post(fmt"{self.baseUrl}/_search_analyze", $ %*{
+    let req = await self.hc.post(fmt"{self.baseUrl}/_search_analyze", $ %*{
       "analyzer": analyzer, "text": text
     })
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc up*(self): bool =
+  proc up*(self: CC or AsyncCC): Future[bool] {.multisync.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#up
-    self.hc.get(fmt"{self.baseUrl}/_up").code == Http200 # or 404
+    return (await self.hc.get(fmt"{self.baseUrl}/_up")).code == Http200 # or 404
 
-  proc uuids*(self; count = 1): seq[string] =
+  proc uuids*(self: CC or AsyncCC; count = 1): Future[seq[string]] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#uuids
-    let req = self.hc.get(fmt"{self.baseUrl}/_uuids?count={count}")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_uuids?count={count}")
 
     castError req
-    req.body.parseJson["uuids"].mapIt it.str
+    return (await req.body).parseJson["uuids"].mapIt it.str
 
-  proc getReshards*(self): JsonNode =
+  proc getReshards*(self: CC or AsyncCC): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#reshard
-    let req = self.hc.get(fmt"{self.baseUrl}/_reshard")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_reshard")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc reshardState*(self): JsonNode =
+  proc reshardState*(self: CC or AsyncCC): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_reshard-state
-    let req = self.hc.get(fmt"{self.baseUrl}/_reshard/state")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_reshard/state")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc changeReshardState*(self; state: ReshardStates, state_reason = "") {.captureDefaults.} =
+  proc changeReshardState*(self: CC or AsyncCC; state: ReshardStates, state_reason = "") {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#put--_reshard-state
 
-    let req = self.hc.put(fmt"{self.baseUrl}/_reshard/state", $ createNadd(
+    let req = await self.hc.put(fmt"{self.baseUrl}/_reshard/state", $ createNadd(
       %*{"state": $state},
       [state_reason],
       defaults
     ))
     castError req
 
-  proc reshardJobs*(self; jobId = ""): JsonNode =
+  proc reshardJobs*(self: CC or AsyncCC; jobId = ""): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_reshard-jobs
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_reshard-jobs-jobid
-    let req = self.hc.get(fmt"{self.baseUrl}/_reshard/jobs/" & jobId)
+    let req = await self.hc.get(fmt"{self.baseUrl}/_reshard/jobs/" & jobId)
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc createReshardJob*(self, db;
+  proc createReshardJob*(self: CC or AsyncCC, db;
     `type`=  "split", 
     node,
     `range`, 
     shard,
     error = ""
-  ): JsonNode {.captureDefaults.} =
+  ): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#post--_reshard-jobs
 
-    let req = self.hc.post(fmt"{self.baseUrl}/_reshard/jobs", $ createNadd( %* {
+    let req = await self.hc.post(fmt"{self.baseUrl}/_reshard/jobs", $ createNadd( %* {
       "type": `type`,
       "db": db,
     }, [node, `range`, shard, error],
     defaults))
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc deleteReshadJob*(self; jobId: string) =
+  proc deleteReshadJob*(self: CC or AsyncCC; jobId: string) {.multisync.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#delete--_reshard-jobs-jobid
-    let req = self.hc.delete(fmt"{self.baseUrl}/_reshard/jobs/{jobid}")
+    let req = await self.hc.delete(fmt"{self.baseUrl}/_reshard/jobs/{jobid}")
     castError req
 
-  proc getReshardJobState*(self; jobId: string): JsonNode =
+  proc getReshardJobState*(self: CC or AsyncCC; jobId: string): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_reshard-jobs-jobid-state
-    let req = self.hc.get(fmt"{self.baseUrl}/_reshard/jobs/{jobId}/state")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_reshard/jobs/{jobId}/state")
     castError req
 
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc changeReshardJobState*(self; jobId, state: string, state_reason = "") {.captureDefaults.} =
+  proc changeReshardJobState*(self: CC or AsyncCC; jobId, state: string, state_reason = "") {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#put--_reshard-state
 
-    let req = self.hc.put(fmt"{self.baseUrl}/_reshard/jobs/{jobId}/state", $createNadd(
+    let req = await self.hc.put(fmt"{self.baseUrl}/_reshard/jobs/{jobId}/state", $createNadd(
       %* {"state": state},
       [state_reason],
       defaults
@@ -357,16 +357,16 @@ addTestCov:
 
     castError req
 
-  proc getCurrentSession*(self): JsonNode =
+  proc getCurrentSession*(self: CC or AsyncCC): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/authn.html#get--_session
-    let req = self.hc.get(fmt"{self.baseUrl}/_session")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_session")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc cookieAuth*(self; name, password: string): JsonNode =
+  proc cookieAuth*(self: CC or AsyncCC; name, password: string): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/authn.html#post--_session
-    let req = self.hc.post(fmt"{self.baseUrl}/_session", $ %* {
+    let req = await self.hc.post(fmt"{self.baseUrl}/_session", $ %* {
       "name": name,
       "password": password
     })
@@ -374,79 +374,79 @@ addTestCov:
     castError req
     self.hc.headers.add "Cookie", req.headers["Set-Cookie"]
 
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc proxyAuth*(self; username, token: string, roles: seq[string])=
+  proc proxyAuth*(self: CC or AsyncCC; username, token: string, roles: seq[string])=
     ## https://docs.couchdb.org/en/latest/api/server/authn.html?highlight=authentication#proxy-authentication
     self.hc.headers["X-Auth-CouchDB-Roles"] = roles.join ","
     self.hc.headers["X-Auth-CouchDB-UserName"] = username
     self.hc.headers["X-Auth-CouchDB-Token"] = token
 
-  proc jwtAuth*(self; token: string)=
+  proc jwtAuth*(self: CC or AsyncCC; token: string)=
     ## https://docs.couchdb.org/en/latest/api/server/authn.html?highlight=authentication#jwt-authentication
     self.hc.headers["Authorization"] = "Bearer " & token
 
-  proc removeAuth*(self)=
+  proc removeAuth*(self: CC or AsyncCC)=
     for k in ["Cookie", "Authorization", 
       "X-Auth-CouchDB-Roles", "X-Auth-CouchDB-UserName", "X-Auth-CouchDB-Token"]:
       
       del self.hc.headers, k
 
-  proc getNodeConfig*(self, node): JsonNode =
+  proc getNodeConfig*(self: CC or AsyncCC, node): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#get--_node-node-name-_config
-    let req = self.hc.get(fmt"{self.baseUrl}/_node/{node}/_config")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_node/{node}/_config")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc getNodeSectionConfig*(self, node, section; ): JsonNode =
+  proc getNodeSectionConfig*(self: CC or AsyncCC, node, section; ): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#node-node-name-config-section
-    let req = self.hc.get(fmt"{self.baseUrl}/_node/{node}/_config/{section}")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_node/{node}/_config/{section}")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc getNodeSectionKeyConfig*(self, node, section; key: string): JsonNode =
+  proc getNodeSectionKeyConfig*(self: CC or AsyncCC, node, section; key: string): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#get--_node-node-name-_config-section-key
-    let req = self.hc.get(fmt"{self.baseUrl}/_node/{node}/_config/{section}/{key}")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_node/{node}/_config/{section}/{key}")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc updateNodeSectionKeyConfig*(self, node, section; key: string, newval: JsonNode): JsonNode =
+  proc updateNodeSectionKeyConfig*(self: CC or AsyncCC, node, section; key: string, newval: JsonNode): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#get--_node-node-name-_config-section-key
-    let req = self.hc.put(fmt"{self.baseUrl}/_node/{node}/_config/{section}/{key}", $ newval)
+    let req = await self.hc.put(fmt"{self.baseUrl}/_node/{node}/_config/{section}/{key}", $ newval)
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc deleteNodeSectionKeyConfig*(self, node, section; key: string): JsonNode =
+  proc deleteNodeSectionKeyConfig*(self: CC or AsyncCC, node, section; key: string): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#delete--_node-node-name-_config-section-key
-    let req = self.hc.delete(fmt"{self.baseUrl}/_node/{node}/_config/{section}/{key}")
+    let req = await self.hc.delete(fmt"{self.baseUrl}/_node/{node}/_config/{section}/{key}")
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc reloadConfigs*(self, node) =
+  proc reloadConfigs*(self: CC or AsyncCC, node) {.multisync.} =
     ## https://docs.couchdb.org/en/latest/api/server/configuration.html#get--_node-node-name-_config-section-key
-    let req = self.hc.post(fmt"{self.baseUrl}/_node/{node}/_config/_reload")
+    let req = await self.hc.post(fmt"{self.baseUrl}/_node/{node}/_config/_reload")
     castError req
 
   # DATEBASE API ------------------------------------------------------------
 
-  proc isDBexists*(self, db): bool =
+  proc isDBexists*(self: CC or AsyncCC, db): Future[bool] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/database/common.html#head--db
-    let req = self.hc.head(fmt"{self.baseUrl}/{db}")
-    req.code == Http200
+    let req = await self.hc.head(fmt"{self.baseUrl}/{db}")
+    return req.code == Http200
 
-  proc getDBinfo*(self, db): JsonNode =
+  proc getDBinfo*(self: CC or AsyncCC, db): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/database/common.html#get--db
-    let req = self.hc.get(fmt"{self.baseUrl}/{db}")
+    let req = await self.hc.get(fmt"{self.baseUrl}/{db}")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc createDB*(self, db; q, n = -1, partitioned = false) {.captureDefaults.} =
+  proc createDB*(self: CC or AsyncCC, db; q, n = -1, partitioned = false) {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/common.html#put--db
-    let req = self.hc.put(fmt"{self.baseUrl}/{db}?" & encodeQuery createNadd(
+    let req = await self.hc.put(fmt"{self.baseUrl}/{db}?" & encodeQuery createNadd(
       newseq[DoubleStrTuple](),
       [q, n, partitioned],
       defaults
@@ -454,25 +454,25 @@ addTestCov:
 
     castError req
 
-  proc deleteDB*(self, db) =
+  proc deleteDB*(self: CC or AsyncCC, db) {.multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/common.html#delete--db
-    let req = self.hc.delete(fmt"{self.baseUrl}/{db}")
+    let req = await self.hc.delete(fmt"{self.baseUrl}/{db}")
 
     castError req
 
-  proc createDoc*(self, db; doc: JsonNode, batch = BVNon): JsonNode {.captureDefaults.} =
+  proc createDoc*(self: CC or AsyncCC, db; doc: JsonNode, batch = BVNon): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/common.html#post--db
 
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/?" & encodeQuery createNadd(
+    let req = await self.hc.post(fmt"{self.baseUrl}/{db}/?" & encodeQuery createNadd(
       newseq[DoubleStrTuple](),
       [batch],
       defaults
     ), $doc)
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc designDocs*(self, db;
+  proc designDocs*(self: CC or AsyncCC, db;
     conflicts,
     descending = false,
     startkey,
@@ -486,7 +486,7 @@ addTestCov:
     limit,
     skip = 0,
     update_seq = false,
-  ): JsonNode {.captureDefaults.} =
+  ): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-design-docs
 
     let queryParams = createNadd(newseq[DoubleStrTuple](), [
@@ -508,18 +508,18 @@ addTestCov:
       url = fmt"{self.baseUrl}/{db}/_design_docs/?" & encodeQuery(queryParams)
       req =
         if keys == defaults.keys:
-          self.hc.get(url)
+          await self.hc.get(url)
         else:
-          self.hc.post(url, $ %*{"keys": keys})
+          await self.hc.post(url, $ %*{"keys": keys})
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc bulkGet*(self, db; docs: JsonNode, revs = false): JsonNode {.captureDefaults.} =
+  proc bulkGet*(self: CC or AsyncCC, db; docs: JsonNode, revs = false): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-bulk-get
     doAssert docs.kind == JArray
 
-    let req = self.hc.post(
+    let req = await self.hc.post(
       fmt"{self.baseUrl}/{db}/_bulk_get?" & encodeQuery createNadd(
         newseq[DoubleStrTuple](),
         [revs],
@@ -527,48 +527,48 @@ addTestCov:
     ), $ %*{"docs": docs})
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc bulkDocs*(self, db; docs: JsonNode, new_edits = true): JsonNode {.captureDefaults.} =
+  proc bulkDocs*(self: CC or AsyncCC, db; docs: JsonNode, new_edits = true): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-bulk-docs
     doAssert docs.kind == JArray
 
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_bulk_docs", $createNadd(
+    let req = await self.hc.post(fmt"{self.baseUrl}/{db}/_bulk_docs", $createNadd(
       %* {"docs": docs},
       [new_edits],
       defaults
     ))
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc find*(self, db; mangoQuery: JsonNode, 
+  proc find*(self: CC or AsyncCC, db; mangoQuery: JsonNode, 
     explain = false
-  ): JsonNode {.captureDefaults.} =
+  ): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/find.html#db-find
     ## https://docs.couchdb.org/en/latest/api/database/find.html#post--db-_explain
     ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#db-partition-partition-id-find
     ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#db-partition-partition-id-explain
 
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/" & (
+    let req = await self.hc.post(fmt"{self.baseUrl}/{db}/" & (
       if explain: "_explain"
       else: "_find"
     ), $mangoQuery)
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc createIndex*(self, db;
+  proc createIndex*(self: CC or AsyncCC, db;
     index: JsonNode,
     ddoc,
     name,
     `type` = "",
     partitioned = false
-  ): JsonNode {.captureDefaults.} =
+  ): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/find.html#db-index
     doAssert index.kind == JObject
 
-    let req = self.hc.post(
+    let req = await self.hc.post(
       fmt"{self.baseUrl}/{db}/_index",
       $createNadd(%* {"index": index}, [
         ddoc,
@@ -578,41 +578,41 @@ addTestCov:
       ], defaults))
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc getIndexes*(self, db): JsonNode =
+  proc getIndexes*(self: CC or AsyncCC, db): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/database/find.html#get--db-_index
-    let req = self.hc.get(fmt"{self.baseUrl}/{db}/_index")
+    let req = await self.hc.get(fmt"{self.baseUrl}/{db}/_index")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc deleteIndex*(self, db, ddoc; name: string) =
+  proc deleteIndex*(self: CC or AsyncCC, db, ddoc; name: string) {.multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/find.html#delete--db-_index,ddoc;json-name
-    let req = self.hc.delete(fmt"{self.baseUrl}/{db}/_index/{ddoc}/json/{name}")
+    let req = await self.hc.delete(fmt"{self.baseUrl}/{db}/_index/{ddoc}/json/{name}")
     castError req
 
-  proc getshards*(self, db): JsonNode =
+  proc getshards*(self: CC or AsyncCC, db): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/database/shard.html
-    let req = self.hc.get(fmt"{self.baseUrl}/{db}/_shards")
+    let req = await self.hc.get(fmt"{self.baseUrl}/{db}/_shards")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc shardsDoc*(self, db, docId): JsonNode =
+  proc shardsDoc*(self: CC or AsyncCC, db, docId): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/database/shard.html#db-shards-doc
-    let req = self.hc.get(fmt"{self.baseUrl}/{db}/_shards/{docid}")
+    let req = await self.hc.get(fmt"{self.baseUrl}/{db}/_shards/{docid}")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc syncShards*(self, db)=
+  proc syncShards*(self: CC or AsyncCC, db) {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/database/shard.html#db-sync-shards
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_sync_shards")
+    let req = await self.hc.post(fmt"{self.baseUrl}/{db}/_sync_shards")
 
     castError req
 
-  proc changes*(self, db; feed: FeedVariants,
+  proc changes*(self: CC or AsyncCC, db; feed: FeedVariants,
     doc_ids = newseq[string](),
     conflicts,
     descending = false,
@@ -628,7 +628,7 @@ addTestCov:
     timeout = -1,
     view = "",
     seq_interval = 0,
-  ): JsonNode {.captureDefaults.} =
+  ): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/changes.html
     var queryParams = @[("feed", $feed)].createNadd([
       conflicts,
@@ -650,96 +650,96 @@ addTestCov:
     let url = fmt"{self.baseUrl}/{db}/_changes?" & encodeQuery(queryParams)
     let req =
       if docids.len != 0:
-        self.hc.post(url, $ %* {"doc_ids": docids})
+        await self.hc.post(url, $ %* {"doc_ids": docids})
       else:
-        self.hc.get(url)
+        await self.hc.get(url)
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc compact*(self, db) =
+  proc compact*(self: CC or AsyncCC, db) {.multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/compact.html#db-compact
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_compact")
+    let req = await self.hc.post(fmt"{self.baseUrl}/{db}/_compact")
 
     castError req
 
-  proc compactDesignDoc*(self, db, ddoc)=
+  proc compactDesignDoc*(self: CC or AsyncCC, db, ddoc) {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/database/compact.html#db-compact-design-doc
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_compact/{ddoc}")
+    let req = await self.hc.post(fmt"{self.baseUrl}/{db}/_compact/{ddoc}")
 
     castError req
 
-  proc viewCleanup*(self, db) =
+  proc viewCleanup*(self: CC or AsyncCC, db) {.multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/compact.html#db-view-cleanup
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_view_cleanup")
+    let req = await self.hc.post(fmt"{self.baseUrl}/{db}/_view_cleanup")
 
     castError req
 
-  proc getSecurity*(self, db): JsonNode =
+  proc getSecurity*(self: CC or AsyncCC, db): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/database/security.html#get--db-_security
-    let req = self.hc.get(fmt"{self.baseUrl}/{db}/_security")
+    let req = await self.hc.get(fmt"{self.baseUrl}/{db}/_security")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc setSecurity*(self, db; admins, members: JsonNode)=
+  proc setSecurity*(self: CC or AsyncCC, db; admins, members: JsonNode) {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/database/security.html#put--db-_security
-    let req = self.hc.put(fmt"{self.baseUrl}/{db}/_security", $ %* {
+    let req = await self.hc.put(fmt"{self.baseUrl}/{db}/_security", $ %* {
       "admins": admins,
       "members": members,
     })
 
     castError req
 
-  proc purge*(self, db; obj: JsonNode): JsonNode =
+  proc purge*(self: CC or AsyncCC, db; obj: JsonNode): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/database/misc.html#db-purge
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_purge", $ obj)
+    let req = await self.hc.post(fmt"{self.baseUrl}/{db}/_purge", $ obj)
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc getPurgedInfosLimit*(self, db): int =
+  proc getPurgedInfosLimit*(self: CC or AsyncCC, db): Future[int] {.multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/misc.html#get--db-_purged_infos_limit
-    let req = self.hc.get(fmt"{self.baseUrl}/{db}/_purged_infos_limit")
+    let req = await self.hc.get(fmt"{self.baseUrl}/{db}/_purged_infos_limit")
 
     castError req
-    req.body.strip.parseInt
+    return (await req.body).strip.parseInt
 
-  proc setPurgedInfosLimit*(self, db; limit: int) =
+  proc setPurgedInfosLimit*(self: CC or AsyncCC, db; limit: int) {.multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/misc.html#put--db-_purged_infos_limit
-    let req = self.hc.put(fmt"{self.baseUrl}/{db}/_purged_infos_limit", $limit)
+    let req = await self.hc.put(fmt"{self.baseUrl}/{db}/_purged_infos_limit", $limit)
 
     castError req
 
-  proc missingRevs*(self, db; obj: JsonNode): JsonNode =
+  proc missingRevs*(self: CC or AsyncCC, db; obj: JsonNode): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/database/misc.html#db-missing-revs
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_missing_revs", $ obj)
+    let req = await self.hc.post(fmt"{self.baseUrl}/{db}/_missing_revs", $ obj)
 
     castError req
-    req.body.parseJson["missing_revs"]
+    return (await req.body).parseJson["missing_revs"]
 
-  proc revsDiff*(self, db; obj: JsonNode): JsonNode =
+  proc revsDiff*(self: CC or AsyncCC, db; obj: JsonNode): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/database/misc.html#post--db-_revs_diff
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_revs_diff", $ obj)
+    let req = await self.hc.post(fmt"{self.baseUrl}/{db}/_revs_diff", $ obj)
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc getRevsLimit*(self, db): int =
+  proc getRevsLimit*(self: CC or AsyncCC, db): Future[int] {.multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/misc.html#get--db-_revs_limit
-    let req = self.hc.get(fmt"{self.baseUrl}/{db}/_revs_limit")
+    let req = await self.hc.get(fmt"{self.baseUrl}/{db}/_revs_limit")
 
     castError req
-    req.body.strip.parseInt
+    return (await req.body).strip.parseInt
 
-  proc setRevsLimit*(self, db; limit: int) =
+  proc setRevsLimit*(self: CC or AsyncCC, db; limit: int) {.multisync.} =
     ## https://docs.couchdb.org/en/latest/api/database/misc.html#put--db-_revs_limit
-    let req = self.hc.put(fmt"{self.baseUrl}/{db}/_revs_limit", $limit)
+    let req = await self.hc.put(fmt"{self.baseUrl}/{db}/_revs_limit", $limit)
 
     castError req
 
   # DOCUMENTs API & LOCAL DOCUMENTs API ---------------------------------------------------
-  proc getLocalDocs*(self, db;
+  proc getLocalDocs*(self: CC or AsyncCC, db;
     conflicts,
     descending = false,
     startkey,
@@ -753,10 +753,10 @@ addTestCov:
     limit,
     skip = 0,
     update_seq = false,
-  ): JsonNode {.captureDefaults.} =
+  ): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/local.html#db-local-docs
 
-    let req = self.hc.post(fmt"{self.baseUrl}/{db}/_local_docs/", $ createNadd( %* {}, [
+    let req = await self.hc.post(fmt"{self.baseUrl}/{db}/_local_docs/", $ createNadd( %* {}, [
       conflicts,
       descending,
       startkey,
@@ -772,10 +772,10 @@ addTestCov:
     ], defaults))
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
   ## for local APIs, append `doc_id` to`_local` : "_local/{doc_id}"
-  proc getDoc*(self, db, docid; rev="", headOnly: bool = false,
+  proc getDoc*(self: CC or AsyncCC, db, docid; rev="", headOnly: bool = false,
     attachments,
     att_encoding_info = false,
     atts_since = newseq[string](),
@@ -787,7 +787,7 @@ addTestCov:
     open_revs = newseq[string](),
     revs,
     revs_info = false
-  ): JsonNode {.captureDefaults.} =
+  ): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/document/common.html#get--db-docid
     ## https://docs.couchdb.org/en/latest/api/document/common.html#head--db-docid
     ## https://docs.couchdb.org/en/latest/api/local.html#get--db-_local-docid
@@ -806,7 +806,7 @@ addTestCov:
       revs_info,
     ], defaults)
 
-    let req = self.hc.request(
+    let req = await self.hc.request(
       fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams),
       httpMethod =
         if headOnly: HttpHead
@@ -815,49 +815,50 @@ addTestCov:
 
     castError req
 
-    if headOnly: %* {}
-    else: req.body.parseJson
+    return 
+      if headOnly: %* {}
+      else: (await req.body).parseJson
 
-  proc createOrUpdateDoc*(self, db, docid; rev: string, obj: JsonNode): JsonNode =
+  proc createOrUpdateDoc*(self: CC or AsyncCC, db, docid; rev: string, obj: JsonNode): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/document/common.html#put--db-docid
     ## https://docs.couchdb.org/en/latest/api/local.html#put--db-_local-docid
-    let req = self.hc.put(fmt"{self.baseUrl}/{db}/{docid}?rev={rev}", $obj)
+    let req = await self.hc.put(fmt"{self.baseUrl}/{db}/{docid}?rev={rev}", $obj)
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc deleteDoc*(self, db, docid; rev: string, batch = BVNon, new_edits = false) {.captureDefaults.} =
+  proc deleteDoc*(self: CC or AsyncCC, db, docid; rev: string, batch = BVNon, new_edits = false) {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/document/common.html#delete--db-docid
     ## https://docs.couchdb.org/en/latest/api/local.html#delete--db-_local-docid
     var queryParams = @[("rev", rev)].createNadd([batch, new_edits], defaults)
-    let req = self.hc.delete(fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams))
+    let req = await self.hc.delete(fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams))
 
     castError req
 
   # FIXME httpclient dosen't support custom httpmethod
   #[
-    proc copyDoc*(self, db, docid; destination: string,
+    proc copyDoc*(self: CC or AsyncCC, db, docid; destination: string,
       rev = "",
       batch = BVNon
-    ): JsonNode {.captureDefaults.} =
+    ): Future[JsonNode] {.captureDefaults, multisync.} =
       ## https://docs.couchdb.org/en/latest/api/document/common.html#copy--db-docid
       ## https://docs.couchdb.org/en/latest/api/local.html#copy--db-_local-docid
       var queryParams = newseq[DoubleStrTuple]().createNadd([rev, batch], defaults)
 
-      let req = self.hc.request(
+      let req = await self.hc.request(
         fmt"{self.baseUrl}/{db}/{docid}?" & encodeQuery(queryParams),
         httpMethod = "COPY", # compiler complains about deprecation
         headers = changeHeaders(self.hc.headers, [("Destination", destination)])
       )
 
       castError req
-      req.body.parseJson
+      return (await req.body).parseJson
   ]#
 
-  proc getDocAtt*(self, db, docid, attname;
+  proc getDocAtt*(self: CC or AsyncCC, db, docid, attname;
     headOnly = false,
     rev = ""
-  ): Attachment {.captureDefaults.} =
+  ): Future[Attachment] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/document/attachments.html#head--db-docid-attname
     ## https://docs.couchdb.org/en/latest/api/document/attachments.html#get--db-docid-attname
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#head--db-_design-ddoc-attname
@@ -865,7 +866,7 @@ addTestCov:
 
     var queryParams = newseq[DoubleStrTuple]().createNadd([rev], defaults)
 
-    let req = self.hc.request(
+    let req = await self.hc.request(
       fmt"{self.baseUrl}/{db}/{docid}/{attname}?" & encodeQuery(queryParams),
       httpMethod =
       if headOnly: HttpHead
@@ -873,21 +874,21 @@ addTestCov:
       )
 
     castError req
-    Attachment(
+    return Attachment(
       contentEncoding: req.headers.getOrDefault("Content-Encoding"),
       etag: req.headers["ETag"],
-      content: req.body)
+      content: await req.body)
 
-  proc uploadDocAtt*(self, db, docid, attname;
+  proc uploadDocAtt*(self: CC or AsyncCC, db, docid, attname;
     contentType,
     content: string,
     rev = ""
-  ): JsonNode {.captureDefaults.} =
+  ): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/document/attachments.html#put--db-docid-attname
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#put--db-_design-ddoc-attname
     var queryParams = newseq[DoubleStrTuple]().createNadd([rev], defaults)
 
-    let req = self.hc.request(
+    let req = await self.hc.request(
       fmt"{self.baseUrl}/{db}/{docid}/{attname}?" & encodeQuery(queryParams),
       httpMethod = HttpPut,
       headers = changeHeaders(self.hc.headers, [
@@ -898,24 +899,24 @@ addTestCov:
     )
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc deleteDocAtt*(self, db, docid, attname; rev: string, batch = BVNon): JsonNode {.captureDefaults.} =
+  proc deleteDocAtt*(self: CC or AsyncCC, db, docid, attname; rev: string, batch = BVNon): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/document/attachments.html#delete--db-docid-attname
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#delete--db-_design-ddoc-attname
 
     var queryParams = @[("rev", rev)].createNadd([batch], defaults)
-    let req = self.hc.delete(fmt"{self.baseUrl}/{db}/{docid}/{attname}?" & encodeQuery(queryParams))
+    let req = await self.hc.delete(fmt"{self.baseUrl}/{db}/{docid}/{attname}?" & encodeQuery(queryParams))
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
   # DESIGN DOCUMENTs API ------------------------------------------------------------
 
-  proc getDesignDoc*(self, db, ddoc; headOnly:bool = false): JsonNode =
+  proc getDesignDoc*(self: CC or AsyncCC, db, ddoc; headOnly:bool = false): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#head--db-_design-ddoc
 
-    let req = self.hc.request(
+    let req = await self.hc.request(
       fmt"{self.baseUrl}/{db}/_design/{ddoc}",
       httpMethod =
       if headOnly: HttpHead
@@ -924,25 +925,26 @@ addTestCov:
 
     castError req
 
-    if headOnly:
-      %* {}
-    else:
-      req.body.parseJson
+    return
+      if headOnly:
+        %* {}
+      else:
+        (await req.body).parseJson
 
-  proc createOrUpdateDesignDoc*(self, db, ddoc; rev="", language= "javascript",
+  proc createOrUpdateDesignDoc*(self: CC or AsyncCC, db, ddoc; rev="", language= "javascript",
     filters= newJObject(),
     options= newJObject(),
     updates= newJObject(),
     validate_doc_update= "",
     views = newJObject(),
     autoupdate = true,
-  ): JsonNode {.captureDefaults.} =
+  ): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#put--db-_design-ddoc
       
     var query = %*{"language": language}
     if rev != "": query["_rev"] = % rev
     
-    let req = self.hc.put(fmt"{self.baseUrl}/{db}/_design/{ddoc}", $createNadd(query,
+    let req = await self.hc.put(fmt"{self.baseUrl}/{db}/_design/{ddoc}", $createNadd(query,
       [
         filters,
         options,
@@ -954,42 +956,42 @@ addTestCov:
       defaults))
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc deleteDesignDoc*(self, db, ddoc; rev:string) =
+  proc deleteDesignDoc*(self: CC or AsyncCC, db, ddoc; rev:string) {.multisync.} =
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#delete--db-_design-ddoc
 
-    let req = self.hc.delete(fmt"{self.baseUrl}/{db}/_design/{ddoc}?rev={rev}")
+    let req = await self.hc.delete(fmt"{self.baseUrl}/{db}/_design/{ddoc}?rev={rev}")
     castError req
 
-  proc getDesignDocInfo*(self, db, ddoc): JsonNode =
+  proc getDesignDocInfo*(self: CC or AsyncCC, db, ddoc): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#get--db-_design-ddoc-_info
 
-    let req = self.hc.get(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_info")
+    let req = await self.hc.get(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_info")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  template getViewImpl(self; url: string, obj: JsonNode): JsonNode=
-    let req = self.hc.post(
+  proc getViewImpl(self: CC or AsyncCC; url: string, obj: JsonNode): Future[JsonNode] {.multisync.}=
+    let req = await self.hc.post(
         if "queries" in obj and obj["queries"].kind == JArray: url & "/queries"
-      else: url,
+        else: url,
       $obj)
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc getView*(self, db, ddoc, view; queryObj: JsonNode): JsonNode=
+  proc getView*(self: CC or AsyncCC, db, ddoc, view; queryObj: JsonNode): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/ddoc/views.html#get--db-_design-ddoc-_view-view
     ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#db-partition-partition-design-design-doc-view-view-name
-    self.getViewImpl(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_view/{view}", queryObj)
+    return await self.getViewImpl(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_view/{view}", queryObj)
   
-  proc allDocs*(self, db; queryObj: JsonNode): JsonNode {.captureDefaults.}=
+  proc allDocs*(self: CC or AsyncCC, db; queryObj: JsonNode): Future[JsonNode] {.captureDefaults, multisync.}=
     ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs
     ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#get--db-_partition-partition-_all_docs
-    self.getViewImpl(fmt"{self.baseUrl}/{db}/_all_docs", queryObj)
+    return await self.getViewImpl(fmt"{self.baseUrl}/{db}/_all_docs", queryObj)
 
-  proc searchByIndex*(self, db, ddoc; index: string,
+  proc searchByIndex*(self: CC or AsyncCC, db, ddoc; index: string,
     query: string,
     bookmark = "",
     counts = newJObject(),
@@ -1007,7 +1009,7 @@ addTestCov:
     ranges = newJObject(),
     sort = newJobject(),
     stale = "",
-  ): JsonNode {.captureDefaults.} =
+  ): Future[JsonNode] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/ddoc/search.html#get--db-_design-ddoc-_search-index
     var queryParams = @[("query", query)].createNadd([
       bookmark,
@@ -1027,27 +1029,27 @@ addTestCov:
       sort,
       stale,
     ], defaults)
-    let req = self.hc.get(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_search/{index}?" &
+    let req = await self.hc.get(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_search/{index}?" &
         encodeQuery(queryParams))
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc searchInfo*(self, db, ddoc; index: string): JsonNode =
+  proc searchInfo*(self: CC or AsyncCC, db, ddoc; index: string): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/ddoc/search.html#get--db-_design-ddoc-_search_info-index
-    let req = self.hc.get(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_search_info/{index}")
+    let req = await self.hc.get(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_search_info/{index}")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc execUpdateFunc*(self, db, ddoc; `func`: string,
+  proc execUpdateFunc*(self: CC or AsyncCC, db, ddoc; `func`: string,
     body: JsonNode = newJNull(),
     docid = "",
-  ): tuple[body, id, rev: string] =
+  ): Future[tuple[body, id, rev: string]] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/ddoc/render.html#post--db-_design-ddoc-_update-func
     ## https://docs.couchdb.org/en/latest/api/ddoc/render.html#put--db-_design-ddoc-_update-func-docid
     
-    let req = self.hc.request(
+    let req = await self.hc.request(
       fmt"{self.baseUrl}/{db}/_design/{ddoc}/_update/{`func`}/{docid}",
       body = $body,
       httpMethod = 
@@ -1057,17 +1059,17 @@ addTestCov:
 
     castError req
 
-    (
-      req.body,
+    return (
+      (await req.body),
       $req.headers["X-Couch-Id"],
       $req.headers["X-Couch-Update-Newrev"]
     )
 
   # partitioned DATABASEs API ------------------------------------------------------------
   # FIXME add better api for partions for all docs and getview
-  proc getPartitionInfo*(self, db, partition): JsonNode =
+  proc getPartitionInfo*(self: CC or AsyncCC, db, partition): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#get--db-_partition-partition
-    let req = self.hc.get(fmt"{self.baseUrl}/{db}/_partition/{partition}")
+    let req = await self.hc.get(fmt"{self.baseUrl}/{db}/_partition/{partition}")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson

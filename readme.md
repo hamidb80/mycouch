@@ -47,7 +47,7 @@ currently it's based on CouchDB `v3.1.1`
     }
   ```
 
-### SQL-like Parse Selector
+### SQL-like Selector Parser
 you can put the query im 2 ways: [`PS` is an alias for `parseSelector`]
 
 - `PS( <query>  )`
@@ -59,14 +59,14 @@ you can put the query im 2 ways: [`PS` is an alias for `parseSelector`]
 
 ```nim
 PS:
-  nil                         # {"_id": {"$gt": nil}}
+  nil                        # {"_id": {"$gt": nil}}
   
   # field name variants
   # since nim doesn't support underline at the first character of an identifier, you can use -
   field == true             # {"<THE VALUE OF VAR 'field'>": {"$eq": true}}
   @field == true            # {"field"                     : {"$eq": true}}
-  @-field                   # "_field"                     : 
-  @"_field._sub"             # "_field._sub"                :
+  @-field                   #  "_field" 
+  @"_field._sub"            #  "_field._sub"
 
   # comparisions < <= == != >= >
   @year < bad_year            # 'year' is a field / 'bad_year' is var
@@ -79,20 +79,23 @@ PS:
   @year in    [2020, 2021]    # in | $in
   @year notin [2020, 2021]    # not in | $nin
 
-  ?= @genre or ?! @genre      # ?=: exists, ?! is not exists | $exists
+  ?= @genre or ?! @genre      # (?=): exists, (?!): not exists | $exists
   
-  ? @genre or ! @genre        # ?: ==true, !: ==false
+  ? @genre or ! @genre        # (?): == true, (!): == false
   
   @year is myType             # is for type spesification | $type
-  @year is number               # object, array, string, number, nil, bool
+  @year is number             # object, array, string, number, nil, bool
 
   @list.size(3)               # match array len | $size
-  @list.all(["hamid", "ali"]) # all function same for elemMatch, allMatch, keyMapMatch functions | $all 
+  @list.all(["hamid", "ali"]) # all function are the same for elemMatch, allMatch, keyMapMatch functions | $all 
 
   # or not | $and $or $not
   not (@artist == "mohammadAli" and (@genre notin ["pop", "rock"] or @artist == "iman khodaee"))
   (@field == 3 and @date == 12).nor(@field == 4) # since nim doesnt have 'nor' operator | $nor
 ```
+
+## async + sync!
+you can use all of APIs with your favourite runtime(did i use the right word?).
 
 ## Qeury Server
 Do you remember some of [Erlang's built-in View functions](https://docs.couchdb.org/en/latest/ddocs/ddocs.html#built-in-reduce-functions)? 
@@ -102,7 +105,6 @@ here were gonna do something like that [but in nim]
 # TODOs
  - [ ] update docs on gh-pages
  - [ ] add docs for all modules
- - [ ] add async
  - [ ] helper module
  - [ ] add test coverage tag
 
