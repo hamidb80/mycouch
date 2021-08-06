@@ -1,6 +1,5 @@
 # myCouch
 CouchDB client wrtten in Nim.
-
 currently it's based on CouchDB `v3.1.1`
 
 **note:** deprecated & no-op APIs are not included

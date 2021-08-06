@@ -1,13 +1,21 @@
 import
-  httpclient, httpcore, uri,
+  httpclient, httpcore, asyncdispatch, uri,
   json, tables, strformat, strutils, sequtils
 import coverage
 import ./private/utils
 
 type
-  CouchDBClient* = object
-    hc*: HttpClient
+  BaseCouchDBClient = object of RootObj
     baseUrl*: string
+
+  AsyncCouchDBClient* = object of BaseCouchDBClient
+    hc*: AsyncHttpClient
+
+  CouchDBClient* = object of BaseCouchDBClient
+    hc*: HttpClient
+  
+  CC = CouchDBClient
+  AsyncCC = AsyncCouchDBClient
 
   Attachment* = object
     etag*: string
@@ -45,6 +53,8 @@ type
 
 
 using
+  CC: CouchDBClient
+  ACC: AsyncCouchDBClient 
   self: CouchDBClient
   db: string
   docid: string
@@ -87,29 +97,35 @@ template castError(res: Response) =
   if not res.code.is2xx:
     raise newCouchDBError(res.code, res.body.parseJson)
 
+template castError(res: AsyncResponse) =
+  if not res.code.is2xx:
+    raise newCouchDBError(res.code, (await res.body).parseJson)
+
+
 # SERVER API ----------------------------------------------------------------------
+
 addTestCov:
-  proc serverInfo*(self): JsonNode=
+  proc serverInfo*(self: CC | AsyncCC): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#api-server-root
-    let req = self.hc.get(fmt"{self.baseUrl}/")
+    let req = await self.hc.get(fmt"{self.baseUrl}/")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc activeTasks*(self): JsonNode =
+  proc activeTasks*(self: CC | AsyncCC): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#active-tasks
-    let req = self.hc.get(fmt"{self.baseUrl}/_active_tasks/")
+    let req = await self.hc.get(fmt"{self.baseUrl}/_active_tasks/")
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  proc allDBs*(self;
+  proc allDBs*(self: CC | AsyncCC,
     descending = false,
     limit,
     skip = 0,
     startkey,
     endKey = newJObject()
-  ): seq[string] {.captureDefaults.} =
+  ): Future[seq[string]] {.captureDefaults, multisync.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#all-dbs
 
     var queryParams = @[
@@ -121,27 +137,26 @@ addTestCov:
       endKey,
     ], defaults)
 
-    let req = self.hc.get(fmt"{self.baseUrl}/_all_dbs/?" & encodeQuery(queryParams))
+    let req = await self.hc.get(fmt"{self.baseUrl}/_all_dbs/?" & encodeQuery(queryParams))
 
     castError req
-    req.body.parseJson.mapIt it.str
+    return (await req.body).parseJson.mapIt it.str
 
-  proc DBsInfo*(self; keys: openArray[string]): JsonNode =
+  proc DBsInfo*(self: CC | AsyncCC; keys: openArray[string]): Future[JsonNode] {.multisync.}=
     ## https://docs.couchdb.org/en/latest/api/server/common.html#dbs-info
-
-    let req = self.hc.post(fmt"{self.baseUrl}/_dbs_info", $ %*{"keys": keys})
+    let req = await self.hc.post(fmt"{self.baseUrl}/_dbs_info", $ %*{"keys": keys})
 
     castError req
-    req.body.parseJson
+    return (await req.body).parseJson
 
-  ## TODO https://docs.couchdb.org/en/latest/api/server/common.html#get--_cluster_setup
-  ## https://docs.couchdb.org/en/latest/api/server/common.html#post--_cluster_setup
+  # ## TODO https://docs.couchdb.org/en/latest/api/server/common.html#get--_cluster_setup
+  # ## https://docs.couchdb.org/en/latest/api/server/common.html#post--_cluster_setup
 
-  proc DBupdates*(self; feed: FeedVariants, 
+  proc DBupdates*(self: CC | AsyncCC; feed: FeedVariants, 
     timeout = 60, 
     heartbeat = 60000, 
     since = "now"
-  ): JsonNode =
+  ): Future[JsonNode] =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#db-updates
     let req = self.hc.get(fmt"{self.baseUrl}/_db_updates/?" & encodeQuery([
       ("feed", $feed),
