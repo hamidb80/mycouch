@@ -26,8 +26,8 @@ currently it's based on CouchDB `v3.1.1`
 ## Mango Query-Lang
   ```nim
     mango(
-      query: PS(@name == "hamid" and @year notin [1399])
-      fields: ["name", "stars"]
+      query= PS(@name == "hamid" and @year notin [1399])
+      fields= ["name", "stars"]
     )
   ```
   converts to =>
