@@ -4,15 +4,6 @@ import json, sequtils, tables, strformat
 import designDocuments
 
 
-template throw(msg: string)=
-  raise newException(ValueError, msg)
-
-template checkFuncExistance(name: string, collection: untyped)=
-  if name notin collection:
-    throw "func with name '" & name & "' does not exist"
-
-# -------------------------------------------------
-
 type
   Ddoc = object
     updates: Table[string, string]
@@ -26,6 +17,11 @@ var
 
 # -------------------------------------------------
 
+template throw(msg: string)=
+  raise newException(ValueError, msg)
+
+# -------------------------------------------------
+
 proc dataPipeline(command: string, args: seq[JsonNode]): JsonNode {.inline.}=
 
   case command:
@@ -35,8 +31,15 @@ proc dataPipeline(command: string, args: seq[JsonNode]): JsonNode {.inline.}=
 
   of "add_fun":
     let fname = args[0].str
-    checkFuncExistance fname, mapFuncs
-    
+
+    if fname notin mapFuncs:
+      # couchdb 3.1.1 sends reduce function to find out it can be compiled by query server or not
+      # currently it is not documented, i asked the commiunity
+      if fname in reduceFuncs: 
+        return % true
+
+      throw "func with name '" & fname & "' does not exist"
+
     selectedMapFunc = mapFuncs[fname]
     % true
 
@@ -57,14 +60,14 @@ proc dataPipeline(command: string, args: seq[JsonNode]): JsonNode {.inline.}=
       keysNids.add d[0]
       values.add d[1]
 
-    %* [reduceFuncs[fname](keysNids, values, false)]
+    %* [true, [reduceFuncs[fname](keysNids, values, false)]]
 
   of "rereduce":
     let
       fname = args[0][0].str 
       values = args[1].getElems
 
-    %* [true, reduceFuncs[fname](@[], values, true)]
+    %* [true, [reduceFuncs[fname](@[], values, true)]]
 
   of "ddoc":
     if args[0] == %"new": 

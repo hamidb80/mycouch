@@ -48,7 +48,7 @@ suite "query server":
 
     for k, v in grouped:
       send  %*["reduce", ["testReduce"], v.mapIt %*[[it[0], it[1]], it[2]] ]
-      check recv.parseJson[0].elems == (v.mapIt it[2])
+      check recv.parseJson[1][0].elems == (v.mapIt it[2])
 
   test "rereduce":
     var allVals: seq[JsonNode]
@@ -56,7 +56,7 @@ suite "query server":
       allVals.add v
 
     send  %*["rereduce", ["testReduce"],  allVals]
-    check recv.parseJson == %*[true, nil]
+    check recv.parseJson == %*[true, [nil]]
 
   test "ddoc::new":
     send [
@@ -107,7 +107,7 @@ suite "query server":
 
     let res = recv.parseJson
     check:
-      res[1] == %*{"name": "hamidhamid-s"}
+      res[1]["name"].str == "hamidhamid-s"
       res[2] == %*{"body": "yay"}
 
   test "ddoc::filters":

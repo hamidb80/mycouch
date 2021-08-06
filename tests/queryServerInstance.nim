@@ -16,8 +16,9 @@ proc testReduce(keysNids: seq[JsonNode], values: seq[JsonNode], rereduce: bool):
     % values
 
 proc x2namex(doc, req: JsonNode): tuple[newDoc, response: JsonNode] {.updatefun.}=
+  doc["name"] = %(doc["name"].str.repeat(2) & req["body"].str)
   (
-    %*{"name": doc["name"].str.repeat(2) & req["body"].str}, 
+    doc, 
     %*{"body": "yay"}
   )
 
@@ -25,7 +26,11 @@ proc isWomen(doc, req: JsonNode): bool {.filterfun.}=
   doc["gender"].str == "female"
 
 proc remainTheSameType(newDoc, oldDoc, req, sec: JsonNode) {.validatefun.}=
-  if newDoc["type"].kind != oldDoc["type"].kind:
+  if oldDoc.kind == JNull:
+    if "type" notin newDoc:
+      raise newException(Forbidden, "type field does not exist") 
+
+  elif newDoc["type"].kind != oldDoc["type"].kind:
     raise newException(Forbidden, "not a specefic reason") 
 
 
