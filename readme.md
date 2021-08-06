@@ -151,7 +151,7 @@ done! your query server is ready!
 [ examples with more details are placed in `tests/queryServerInstance.nim`]
 
 # TODOs
- - [ ] update docs on gh-pages
+ - [ ] update docs on gh-pages [you can `nimble gen docs` by yourself btw]
  - [ ] add docs for all modules
  - [ ] helper module
  - [ ] add test coverage tag
