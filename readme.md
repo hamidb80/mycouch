@@ -1,5 +1,6 @@
 # myCouch
 CouchDB client wrtten in Nim.
+
 currently it's based on CouchDB `v3.1.1`
 
 **note:** deprecated & no-op APIs are not included
@@ -100,7 +101,50 @@ you can use all of APIs with your favourite runtime(did i use the right word?).
 ## Qeury Server
 Do you remember some of [Erlang's built-in View functions](https://docs.couchdb.org/en/latest/ddocs/ddocs.html#built-in-reduce-functions)? 
 here were gonna do something like that [but in nim]
-[ TODO - for now you can look at `tests/queryServerInstance.nim`]
+
+we have 5 entry points:
+  1. `mapfun`       -> map functions
+  2. `redfun`       -> reduce functions
+  3. `updatefun`    -> update 
+  4. `filterfun`    -> filter
+  5. `validatefun`  -> validate
+
+each one are name of a macro that must be associated with corresponding `proc`
+every function must be matched with it's corresponding pattern [you can see patterns in `mycouch/queryServer/designDocuments.nim`] otherwise you'll get an error.
+
+here's an exmaple of function `testMap` as an map function
+```nim
+import json, tables, strutils
+import mycouch/queryServer/[protocol, designDocuments]
+
+proc testMap(doc: JsonNode): seq[JsonNode] {.mapfun.}= 
+  # emit values like: [genre, movie_name]
+  if ("title" in doc) and ("genres" in doc):
+    for genre in doc["genres"]:
+      emit(genre, doc["title"])
+
+when isMainModule:
+  run()
+```
+don't forget to call `run` proc in your code! it's starts the query server
+
+compile that file and config the query server [doc](https://docs.couchdb.org/en/3.1.1/config/query-servers.html#query-servers-definition)
+
+then you can create a design document with your query server: [design doc example for above code]
+```json
+{
+    "_id": "_design/temp",
+    "language": "<your-language-server-name>",
+    "views": {
+        "myview": {
+            "map": "testMap"
+        }
+    }
+}
+```
+
+done! your query server is ready!
+[ examples with more details are placed in `tests/queryServerInstance.nim`]
 
 # TODOs
  - [ ] update docs on gh-pages

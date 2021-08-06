@@ -1,7 +1,7 @@
 ## this file is based on following link from CouchDB documentations:
 ## https://docs.couchdb.org/en/latest/ddocs/ddocs.html#design-documents
 
-import macros, json, tables
+import macros, json, tables, strformat
 import macroutils except name
 
 
@@ -51,8 +51,8 @@ template prepare {.dirty.}=
   expectKind body, {nnkProcDef, nnkFuncDef}
   let fname = body.name
 
-template patternError {.dirty.} =
-  raise newException(ValueError, "not exists")
+macro patternError(fname: string, collection: typedesc)=
+  error fmt"proc with name '{fname}' can't be matched with pattern '{$collection}'"
 
 # ------------------------------------------------  
 
@@ -65,7 +65,7 @@ macro mapfun*(body)=
     when `fname` is MapFun:
       mapFuncs[`fname.strval`] = `fname`
     else:
-      patternError      
+      patternError `fname.strval`, MapFunc
 
 macro redfun*(body)=
   prepare
@@ -75,7 +75,7 @@ macro redfun*(body)=
     when `fname` is ReduceFun:
       reduceFuncs[`fname.strval`] = `fname`
     else:
-      patternError
+      patternError `fname.strval`, ReduceFun
 
 macro updatefun*(body)=
   prepare
@@ -85,7 +85,7 @@ macro updatefun*(body)=
     when `fname` is UpdateFun:
       updateFuncs[`fname.strval`] = `fname`
     else:
-      patternError
+      patternError `fname.strval`, UpdateFun
 
 macro filterfun*(body)=
   prepare
@@ -95,7 +95,7 @@ macro filterfun*(body)=
     when `fname` is Filterfun:
       filterFuncs[`fname.strval`] = `fname`
     else:
-      patternError
+      patternError `fname.strval`, Filterfun
 
 macro validatefun*(body)=
   prepare
@@ -105,4 +105,4 @@ macro validatefun*(body)=
     when `fname` is ValidateFun:
       validateFuncs[`fname.strval`] = `fname`
     else:
-      patternError
+      patternError `fname.strval`, ValidateFun
