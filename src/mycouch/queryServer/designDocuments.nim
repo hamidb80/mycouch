@@ -47,70 +47,61 @@ var
 
 # ------------------------------------------------
 
-template prepare {.dirty.}=
+template prepare {.dirty.} =
   expectKind body, {nnkProcDef, nnkFuncDef}
 
-  let 
+  let
     fident = body[0]
-    fname = 
+    fname =
       if body[0].kind == nnkIdent:
         body[0].strVal
-      else: # nnkAccQouted
+      else:                              # nnkAccQouted
         body[0].mapIt(it.strVal).join "" # support for quoted names
 
-macro patternError(fname: string, collection: typedesc)=
+macro patternError(fname: string, collection: typedesc) =
   error fmt"proc with name '{fname}' can't be matched with pattern '{$collection}'"
 
-# ------------------------------------------------  
+# ------------------------------------------------
 
-macro mapfun*(body)=
+template addFunc(fident, fname, ftype, collection): untyped =
+  when fident is ftype:
+    collection[fname] = fident
+  else:
+    patternError fname, ftype
+
+
+macro mapfun*(body) =
   prepare
-  
+
   superQuote:
     `body`
-    
-    when `fident` is MapFun:
-      mapFuncs[`fname.strval`] = `fident`
-    else:
-      patternError `fname.strval`, MapFunc
+    addFunc `fident`, `fname.strval`, MapFun, mapFuncs
 
 
-macro redfun*(body)=
+macro redfun*(body) =
   prepare
-  
+
   superQuote:
     `body`
-    when `fident` is ReduceFun:
-      reduceFuncs[`fname.strval`] = `fident`
-    else:
-      patternError `fname.strval`, ReduceFun
+    addFunc `fident`, `fname.strval`, ReduceFun, reduceFuncs
 
-macro updatefun*(body)=
+macro updatefun*(body) =
   prepare
-  
+
   superQuote:
     `body`
-    when `fident` is UpdateFun:
-      updateFuncs[`fname.strval`] = `fident`
-    else:
-      patternError `fname.strval`, UpdateFun
+    addFunc `fident`, `fname.strval`, UpdateFun, updateFuncs
 
-macro filterfun*(body)=
+macro filterfun*(body) =
   prepare
-  
+
   superQuote:
     `body`
-    when `fident` is Filterfun:
-      filterFuncs[`fname.strval`] = `fident`
-    else:
-      patternError `fname.strval`, Filterfun
+    addFunc `fident`, `fname.strval`,  Filterfun, filterFuncs
 
-macro validatefun*(body)=
+macro validatefun*(body) =
   prepare
-  
+
   superQuote:
     `body`
-    when `fident` is ValidateFun:
-      validateFuncs[`fname.strval`] = `fident`
-    else:
-      patternError `fname.strval`, ValidateFun
+    addFunc `fident`, `fname.strval`,  ValidateFun, validateFuncs
