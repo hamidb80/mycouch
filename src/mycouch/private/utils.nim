@@ -32,7 +32,7 @@ macro captureDefaults*(routine): untyped =
   #         IntLit 3
 
   var defs = quote: 
-    let defaults {.used, inject, global.} = nil # use global pragma to initiate it at soon as program started
+    let defaults {.used, inject.} =  nil # use global pragma to initiate it at soon as program started
 
   defs[0][IdentDefDefaultVal] = newNimNode(nnkTupleConstr)
 
