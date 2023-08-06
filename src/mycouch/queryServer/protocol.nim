@@ -1,6 +1,6 @@
 ## https://docs.couchdb.org/en/latest/query-server/protocol.html
 
-import json, sequtils, tables, strformat
+import std/[json, sequtils, tables, strformat]
 import designDocuments
 
 

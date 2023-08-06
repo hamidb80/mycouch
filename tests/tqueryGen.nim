@@ -1,4 +1,4 @@
-import unittest, json
+import std/[unittest, json]
 import mycouch/queryGen
 
 template checkPJ(query, json: untyped): untyped = # checkPsOverJson

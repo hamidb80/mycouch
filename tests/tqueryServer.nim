@@ -1,4 +1,4 @@
-import unittest, os, osproc, streams, tables, sequtils, json
+import std/[unittest, os, osproc, streams, tables, sequtils, json]
 
 template groupItBy[K, V](s: typed, keyExpr, valExpr: untyped): untyped=
   var result: Table[K, seq[V]]

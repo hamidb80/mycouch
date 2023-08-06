@@ -1,7 +1,6 @@
 import
-  unittest, asyncdispatch, httpcore, json, sequtils, strutils, strformat,
-  threadpool, sets, os, mimetypes
-import coverage
+  std/[unittest, asyncdispatch, httpcore, json,
+    sequtils, strutils, strformat, sets, os, mimetypes, threadpool]
 import mycouch/[api, queryGen]
 
 let
@@ -500,9 +499,3 @@ test "restart":
   createClient cc
   cc.nodeRestart
 
-
-when isMainModule:
-  let icp = incompletelyCoveredProcs()
-  echo "\n :::::: uncovered APIs :::::: " & $icp.len
-  echo (icp.mapIt " - " & it.info.procName).join "\n"
-  # echo incompletelyCoveredProcs() # FIXME improve coverage api

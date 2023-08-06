@@ -1,8 +1,8 @@
 ## this file is based on following link from CouchDB documentations:
 ## https://docs.couchdb.org/en/latest/ddocs/ddocs.html#design-documents
 
-import macros, json, tables, strformat, sequtils, strutils
-import macroutils except name
+import std/[macros, json, tables, strformat, sequtils, strutils]
+import macroutils
 
 
 type

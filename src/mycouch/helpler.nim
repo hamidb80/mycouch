@@ -1,4 +1,4 @@
-import json, sequtils, httpcore
+import std/[json, sequtils, httpcore]
 import api
 
 # wrappers -----------------------------------------------------------

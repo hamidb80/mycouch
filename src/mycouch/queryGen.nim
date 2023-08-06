@@ -1,6 +1,5 @@
-import
-  macros, macroutils,
-  json, strformat
+import std/[macros, json, strformat]
+import macroutils
 import api, ./private/utils
 
 func parseIdent(exp: NimNode): NimNode =
@@ -8,16 +7,16 @@ func parseIdent(exp: NimNode): NimNode =
   of nnkPrefix:
     case exp[0].strVal:
     of "@":
-        exp[1].strVal.newStrLitNode
+      exp[1].strVal.newStrLitNode
     of "@-":
-        ("_" & exp[1].strVal).newStrLitNode
+      ("_" & exp[1].strVal).newStrLitNode
     else:
-      raise newException(ValueError, fmt"the perfix '{exp[0].strval}' is not supported for fieldnames")
-  
+      raise newException fmt"the perfix '{exp[0].strval}' is not supported for fieldnames"
+
   of nnkIdent:
     exp
   else:
-    raise newException(ValueError, fmt"unexpected NimNode '{exp.kind}' as an ident")
+    raise newException fmt"unexpected NimNode '{exp.kind}' as an ident"
 
 func parse(exp: NimNode): NimNode =
   case exp.kind:
@@ -33,9 +32,7 @@ func parse(exp: NimNode): NimNode =
     of "and", "or":
       # TODO flattenDeepInfix
       op = "$" & op # $and , $or
-      return superQuote: {
-        `op`: [`br1.parse`, `br2.parse`]
-      }
+      return superQuote: {`op`: [`br1.parse`, `br2.parse`]}
     of "<": op = "$lt"
     of "<=": op = "$lte"
     of ">=": op = "$gte"
@@ -66,76 +63,56 @@ func parse(exp: NimNode): NimNode =
     else:
       raise newException(ValueError, fmt"infix '{op}' is not defiend")
 
-    return superQuote: {
-      `br1.parseIdent`: {
-        `op`: `br2.parse`
-      }
-    }
+    superQuote:
+      {`br1.parseIdent`: {`op`: `br2.parse`}}
+
   of nnkPrefix:
     let op = exp[0].strVal
 
     case op:
-    of "@":
-      return exp.parseIdent
-    of "not":
-      return superQuote: {
-        "$not": `exp[1].parse`
-      }
+    of "@": exp.parseIdent
+    of "not": 
+      superQuote: 
+        {"$not": `exp[1].parse`}
     of "?", "!", "?=", "?!":
       let field = exp[1].parseIdent
 
       if op.len == 2:
-        return quote: {
-          `field`: {
-            "$exists": `op` == "?="
-          }
-        }
+        quote: {`field`: {"$exists": `op` == "?="}}
       else:
-        return quote: {
-          `field`: {
-            "$eq": `op` == "?"
-          }
-        }
+        quote: {`field`: {"$eq": `op` == "?"}}
     else:
-      error fmt"prefix {op} is not defiend"
+      raise newException fmt"prefix {op} is not defiend"
+
   of nnkCall:
-    if exp[0].kind == nnkDotExpr:
+    expectkind exp[0], nnkDotExpr
+    let
+      firstParam = exp[0][0]
+      fn = exp[0][1].strVal # function
+      otherParams = exp[1..^1]
 
-      let
-        firstParam = exp[0][0]
-        fn = exp[0][1].strVal # function
-        otherParams = exp[1..^1]
+    case fn:
+    of "size":
+      superQuote: {
+        `firstParam.parseIdent`: {
+          "$size": `otherParams[0]`}}
+    of "nor":
+      superQuote: {
+        "$nor": [`firstParam.parse`, `otherParams[0].parse`]}
+    of "all":
+      superQuote: {
+        `firstParam.parseIdent`: {
+          "$all": `otherParams[0]`}}
+    of "elemMatch", "allMatch", "keyMapMatch": #FIXME i don't know, maybe they want some specialixations
+      let vfn = "$" & fn
+      superQuote: {
+        `firstParam.parseIdent`: {
+          `vfn`: `otherParams[0].parse`}}
+    else:
+      raise newException fmt"function {fn} is not defined"
 
-      case fn:
-      of "size":
-        return superQuote: {
-          `firstParam.parseIdent`: {
-            "$size": `otherParams[0]`
-          }
-        }
-      of "nor":
-        return superQuote: {
-          "$nor": [`firstParam.parse`, `otherParams[0].parse`]
-        }
-      of "all":
-        return superQuote: {
-          `firstParam.parseIdent`: {
-            "$all": `otherParams[0]`
-          }
-        }
-      of "elemMatch", "allMatch", "keyMapMatch": #FIXME i don't know, maybe they want some specialixations
-        let vfn = "$" & fn
-        return superQuote: {
-          `firstParam.parseIdent`: {
-            `vfn`: `otherParams[0].parse`
-          }
-        }
-      else:
-        error fmt"function {fn} is not defined"
-  of nnkPar:
-    return exp[0].parse
-  else:
-    return exp
+  of nnkPar: exp[0].parse
+  else: exp
 
 template PS*(body: untyped): untyped = parseSelector(body)
 macro parseSelector*(body: untyped): JsonNode =
@@ -154,16 +131,16 @@ func `%`(so: sortObj): JsonNode =
 proc mango*(
   selector: JsonNode,
   fields = newseq[string](),
-  sort= newseq[sortObj](),
+  sort = newseq[sortObj](),
   limit: Natural = 0,
   skip: Natural = 0,
-  use_index: string= "",
+  use_index: string = "",
   use_indexes = newseq[string](),
-  conflicts= false,
+  conflicts = false,
   r: Natural = 1,
-  bookmark="null",
-  update=true,
-  stable=false,
+  bookmark = "null",
+  update = true,
+  stable = false,
   execution_stats: bool = false
 ): JsonNode {.captureDefaults.} =
   result = (%*{
@@ -209,7 +186,7 @@ proc viewQuery*(
   stable = true,
   update = UVTrue,
   update_seq = false,
-): JsonNode {.captureDefaults.}=
+): JsonNode {.captureDefaults.} =
   createNadd(%*{}, [
     conflicts,
     descending,

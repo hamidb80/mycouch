@@ -1,5 +1,5 @@
 # Package
-version       = "0.4.0"
+version       = "0.5.0"
 author        = "hamidb80"
 description   = "a couchDB client written in Nim"
 license       = "MIT"
@@ -7,10 +7,9 @@ srcDir        = "src"
 
 # Dependencies
 
-requires "nim >= 1.4.8"
+requires "nim >= 1.6.0"
 requires "macroutils >= 1.2.0"
 requires "macroplus"
-requires "https://github.com/hamidb80/coverage"
 
 task test, "Runs the test suite":
   exec "nim -d:test r tests/tqueryGen.nim"

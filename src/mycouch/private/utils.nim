@@ -1,6 +1,5 @@
-import macros, json
+import std/[macros, json]
 import macroutils, macroplus, strutils
-import coverage
 
 type DoubleStrTuple* = tuple[key: string, val: string]
 
@@ -31,7 +30,7 @@ macro captureDefaults*(routine): untyped =
   #         Ident "b"
   #         IntLit 3
 
-  var defs = quote: 
+  var defs = quote:
     let defaults {.used, inject, global.} = nil # use global pragma to initiate it at soon as program started
 
   defs[0][IdentDefDefaultVal] = newNimNode(nnkTupleConstr)
@@ -40,30 +39,14 @@ macro captureDefaults*(routine): untyped =
     if arg[IdentDefDefaultVal].kind != nnkEmpty:
       for ident in arg[IdentDefNames]:
         defs[0][IdentDefDefaultVal].add newNimNode(nnkExprColonExpr).add(
-          ident, 
+          ident,
           arg[IdentDefDefaultVal]
         )
-  
+
   routine[RoutineBody].insert 0, defs
   return routine
 
-macro addTestCov*(body): untyped=
-  # TODO: add cov pragma only if custom test flags are provided
-  when not defined(test): 
-    return body
-
-  body.expectKind nnkStmtList
-
-  for prc in body:
-    if prc.kind in {nnkProcDef, nnkFuncDef}:
-      if prc.pragmas.kind == nnkEmpty:
-        prc.pragmas = newNimNode(nnkPragma)
-
-      prc.pragmas.insert 0, bindSym("cov")
-
-  body
-
-func getStrName(n: NimNode): string=
+func getStrName(n: NimNode): string =
   case n.kind:
   of nnkident: n.strVal
   of nnkAccQuoted: n[0].strVal
@@ -79,12 +62,13 @@ macro addIfIsNotDefault*(acc: var JsonNode, checks, defaults): untyped =
 
   for item in checks.children:
     item.expectKind {nnkIdent, nnkAccQuoted}
-    
+
     result.add do: superQuote:
       if `item` != `defaults`.`item`:
         `acc`[`item.getStrName`] = % `item`
 
-macro addIfIsNotDefault*(acc: var seq[DoubleStrTuple], checks, defaults): untyped =
+macro addIfIsNotDefault*(acc: var seq[DoubleStrTuple], checks,
+    defaults): untyped =
   ## checks bracket [ tuple( currentValue[0], defaultValue[1], whatYouWannaReturnIfItwasValid[2] ) ]
   ## if whatYouWannaReturnIfItwasValid was not there we assume that he wants to return currentValue
   checks.expectKind nnkBracket
@@ -92,17 +76,19 @@ macro addIfIsNotDefault*(acc: var seq[DoubleStrTuple], checks, defaults): untype
 
   for item in checks.children:
     item.expectKind {nnkIdent, nnkAccQuoted}
-    
+
     result.add do: superQuote:
       if `item` != `defaults`.`item`:
         `acc`.add (`item.getStrName`, $ `item`)
 
-template createNadd*(data, checks, default): untyped=
+template createNadd*(data, checks, default): untyped =
   block:
     var res = data
     res.addIfIsNotDefault(checks, default)
     res
 
+func newException*(msg: string): ref Exception = 
+  newException(ValueError, msg)
 
 # TODO move it to the tests
 when isMainModule:
