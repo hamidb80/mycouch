@@ -1,3 +1,4 @@
+> Talking is like medicine, little of it benefits and lot of it harms. - Imam Ali
 # myCouch
 CouchDB client wrtten in Nim.
 
