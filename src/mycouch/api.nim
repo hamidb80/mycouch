@@ -131,7 +131,7 @@ addTestCov:
     skip = 0,
     startkey,
     endKey = newJObject()
-  ): Future[seq[string]] {.captureDefaults, multisync.} =
+  ): Future[seq[string]] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#all-dbs
 
     var queryParams = @[
@@ -190,7 +190,7 @@ addTestCov:
     filter: string = "",
     source_proxy,
     target_proxy: string = ""
-  ): Future[JsonNode] {.captureDefaults, multisync.} =
+  ): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#replicate
 
     let req = await self.hc.post(fmt"{self.baseUrl}/_replicate", $ createNadd( %* {
@@ -208,7 +208,7 @@ addTestCov:
     castError req
     return (await req.body).parseJson
 
-  proc schedulerJobs*(self: CC or AsyncCC; limit, skip = 0): Future[JsonNode] {.captureDefaults, multisync.} =
+  proc schedulerJobs*(self: CC or AsyncCC; limit, skip = 0): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#scheduler-jobs
 
     let queryParams = newseq[DoubleStrTuple]().createNadd([
@@ -221,7 +221,7 @@ addTestCov:
     castError req
     return (await req.body).parseJson
 
-  proc schedulerDocs*(self: CC or AsyncCC; replicatorDB, doc_id = "", limit, skip = 0, ): Future[JsonNode] {.captureDefaults, multisync.} =
+  proc schedulerDocs*(self: CC or AsyncCC; replicatorDB, doc_id = "", limit, skip = 0, ): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#scheduler-docs
     ## https://docs.couchdb.org/en/latest/api/server/common.html#get--_scheduler-docs-replicator_db
     
@@ -304,7 +304,7 @@ addTestCov:
     castError req
     return (await req.body).parseJson
 
-  proc changeReshardState*(self: CC or AsyncCC; state: ReshardStates, state_reason = "") {.captureDefaults, multisync.} =
+  proc changeReshardState*(self: CC or AsyncCC; state: ReshardStates, state_reason = "") {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#put--_reshard-state
 
     let req = await self.hc.put(fmt"{self.baseUrl}/_reshard/state", $ createNadd(
@@ -328,7 +328,7 @@ addTestCov:
     `range`, 
     shard,
     error = ""
-  ): Future[JsonNode] {.captureDefaults, multisync.} =
+  ): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#post--_reshard-jobs
 
     let req = await self.hc.post(fmt"{self.baseUrl}/_reshard/jobs", $ createNadd( %* {
@@ -352,7 +352,7 @@ addTestCov:
 
     return (await req.body).parseJson
 
-  proc changeReshardJobState*(self: CC or AsyncCC; jobId, state: string, state_reason = "") {.captureDefaults, multisync.} =
+  proc changeReshardJobState*(self: CC or AsyncCC; jobId, state: string, state_reason = "") {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/server/common.html#put--_reshard-state
 
     let req = await self.hc.put(fmt"{self.baseUrl}/_reshard/jobs/{jobId}/state", $createNadd(
@@ -450,7 +450,7 @@ addTestCov:
     castError req
     return (await req.body).parseJson
 
-  proc createDB*(self: CC or AsyncCC, db; q, n = -1, partitioned = false) {.captureDefaults, multisync.} =
+  proc createDB*(self: CC or AsyncCC, db; q, n = -1, partitioned = false) {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/database/common.html#put--db
     let req = await self.hc.put(fmt"{self.baseUrl}/{db}?" & encodeQuery createNadd(
       newseq[DoubleStrTuple](),
@@ -466,7 +466,7 @@ addTestCov:
 
     castError req
 
-  proc createDoc*(self: CC or AsyncCC, db; doc: JsonNode, batch = BVNon): Future[JsonNode] {.captureDefaults, multisync.} =
+  proc createDoc*(self: CC or AsyncCC, db; doc: JsonNode, batch = BVNon): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/database/common.html#post--db
 
     let req = await self.hc.post(fmt"{self.baseUrl}/{db}/?" & encodeQuery createNadd(
@@ -492,7 +492,7 @@ addTestCov:
     limit,
     skip = 0,
     update_seq = false,
-  ): Future[JsonNode] {.captureDefaults, multisync.} =
+  ): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-design-docs
 
     let queryParams = createNadd(newseq[DoubleStrTuple](), [
@@ -521,7 +521,7 @@ addTestCov:
     castError req
     return (await req.body).parseJson
 
-  proc bulkGet*(self: CC or AsyncCC, db; docs: JsonNode, revs = false): Future[JsonNode] {.captureDefaults, multisync.} =
+  proc bulkGet*(self: CC or AsyncCC, db; docs: JsonNode, revs = false): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-bulk-get
     doAssert docs.kind == JArray
 
@@ -535,7 +535,7 @@ addTestCov:
     castError req
     return (await req.body).parseJson
 
-  proc bulkDocs*(self: CC or AsyncCC, db; docs: JsonNode, new_edits = true): Future[JsonNode] {.captureDefaults, multisync.} =
+  proc bulkDocs*(self: CC or AsyncCC, db; docs: JsonNode, new_edits = true): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#db-bulk-docs
     doAssert docs.kind == JArray
 
@@ -550,7 +550,7 @@ addTestCov:
 
   proc find*(self: CC or AsyncCC, db; mangoQuery: JsonNode, 
     explain = false
-  ): Future[JsonNode] {.captureDefaults, multisync.} =
+  ): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/database/find.html#db-find
     ## https://docs.couchdb.org/en/latest/api/database/find.html#post--db-_explain
     ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#db-partition-partition-id-find
@@ -570,7 +570,7 @@ addTestCov:
     name,
     `type` = "",
     partitioned = false
-  ): Future[JsonNode] {.captureDefaults, multisync.} =
+  ): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/database/find.html#db-index
     doAssert index.kind == JObject
 
@@ -634,7 +634,7 @@ addTestCov:
     timeout = -1,
     view = "",
     seq_interval = 0,
-  ): Future[JsonNode] {.captureDefaults, multisync.} =
+  ): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/database/changes.html
     var queryParams = @[("feed", $feed)].createNadd([
       conflicts,
@@ -759,7 +759,7 @@ addTestCov:
     limit,
     skip = 0,
     update_seq = false,
-  ): Future[JsonNode] {.captureDefaults, multisync.} =
+  ): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/local.html#db-local-docs
 
     let req = await self.hc.post(fmt"{self.baseUrl}/{db}/_local_docs/", $ createNadd( %* {}, [
@@ -793,7 +793,7 @@ addTestCov:
     open_revs = newseq[string](),
     revs,
     revs_info = false
-  ): Future[JsonNode] {.captureDefaults, multisync.} =
+  ): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/document/common.html#get--db-docid
     ## https://docs.couchdb.org/en/latest/api/document/common.html#head--db-docid
     ## https://docs.couchdb.org/en/latest/api/local.html#get--db-_local-docid
@@ -833,7 +833,7 @@ addTestCov:
     castError req
     return (await req.body).parseJson
 
-  proc deleteDoc*(self: CC or AsyncCC, db, docid; rev: string, batch = BVNon, new_edits = false) {.captureDefaults, multisync.} =
+  proc deleteDoc*(self: CC or AsyncCC, db, docid; rev: string, batch = BVNon, new_edits = false) {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/document/common.html#delete--db-docid
     ## https://docs.couchdb.org/en/latest/api/local.html#delete--db-_local-docid
     var queryParams = @[("rev", rev)].createNadd([batch, new_edits], defaults)
@@ -846,7 +846,7 @@ addTestCov:
     proc copyDoc*(self: CC or AsyncCC, db, docid; destination: string,
       rev = "",
       batch = BVNon
-    ): Future[JsonNode] {.captureDefaults, multisync.} =
+    ): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
       ## https://docs.couchdb.org/en/latest/api/document/common.html#copy--db-docid
       ## https://docs.couchdb.org/en/latest/api/local.html#copy--db-_local-docid
       var queryParams = newseq[DoubleStrTuple]().createNadd([rev, batch], defaults)
@@ -864,7 +864,7 @@ addTestCov:
   proc getDocAtt*(self: CC or AsyncCC, db, docid, attname;
     headOnly = false,
     rev = ""
-  ): Future[Attachment] {.captureDefaults, multisync.} =
+  ): Future[Attachment] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/document/attachments.html#head--db-docid-attname
     ## https://docs.couchdb.org/en/latest/api/document/attachments.html#get--db-docid-attname
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#head--db-_design-ddoc-attname
@@ -889,7 +889,7 @@ addTestCov:
     contentType,
     content: string,
     rev = ""
-  ): Future[JsonNode] {.captureDefaults, multisync.} =
+  ): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/document/attachments.html#put--db-docid-attname
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#put--db-_design-ddoc-attname
     var queryParams = newseq[DoubleStrTuple]().createNadd([rev], defaults)
@@ -907,7 +907,7 @@ addTestCov:
     castError req
     return (await req.body).parseJson
 
-  proc deleteDocAtt*(self: CC or AsyncCC, db, docid, attname; rev: string, batch = BVNon): Future[JsonNode] {.captureDefaults, multisync.} =
+  proc deleteDocAtt*(self: CC or AsyncCC, db, docid, attname; rev: string, batch = BVNon): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/document/attachments.html#delete--db-docid-attname
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#delete--db-_design-ddoc-attname
 
@@ -944,7 +944,7 @@ addTestCov:
     validate_doc_update= "",
     views = newJObject(),
     autoupdate = true,
-  ): Future[JsonNode] {.captureDefaults, multisync.} =
+  ): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/ddoc/common.html#put--db-_design-ddoc
       
     var query = %*{"language": language}
@@ -992,7 +992,7 @@ addTestCov:
     ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#db-partition-partition-design-design-doc-view-view-name
     return await self.getViewImpl(fmt"{self.baseUrl}/{db}/_design/{ddoc}/_view/{view}", queryObj)
   
-  proc allDocs*(self: CC or AsyncCC, db; queryObj: JsonNode): Future[JsonNode] {.captureDefaults, multisync.}=
+  proc allDocs*(self: CC or AsyncCC, db; queryObj: JsonNode): Future[JsonNode] {.captureDefaults, multisync, gcSafe.}=
     ## https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs
     ## https://docs.couchdb.org/en/latest/api/partitioned-dbs.html#get--db-_partition-partition-_all_docs
     return await self.getViewImpl(fmt"{self.baseUrl}/{db}/_all_docs", queryObj)
@@ -1015,7 +1015,7 @@ addTestCov:
     ranges = newJObject(),
     sort = newJobject(),
     stale = "",
-  ): Future[JsonNode] {.captureDefaults, multisync.} =
+  ): Future[JsonNode] {.captureDefaults, multisync, gcSafe.} =
     ## https://docs.couchdb.org/en/latest/api/ddoc/search.html#get--db-_design-ddoc-_search-index
     var queryParams = @[("query", query)].createNadd([
       bookmark,
