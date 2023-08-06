@@ -93,20 +93,18 @@ proc changeHeaders(
 type
   CouchDBError* = object of Defect
     responseCode*: HttpCode
-    info*: JsonNode
 
-func newCouchDBError*(respCode: HttpCode, info: JsonNode): ref CouchDBError =
-  result = newException(CouchDBError, "")
+func newCouchDBError*(respCode: HttpCode, info: string): ref CouchDBError =
+  result = newException(CouchDBError, info)
   result.responseCode = respCode
-  result.info = info
 
 template castError(res: Response) =
   if not res.code.is2xx:
-    raise newCouchDBError(res.code, res.body.parseJson)
+    raise newCouchDBError(res.code, res.body)
 
 template castError(res: AsyncResponse) =
   if not res.code.is2xx:
-    raise newCouchDBError(res.code, (await res.body).parseJson)
+    raise newCouchDBError(res.code, (await res.body))
 
 
 # SERVER API ----------------------------------------------------------------------
@@ -169,7 +167,8 @@ proc DBupdates*(self: CC | AsyncCC; feed: FeedVariants,
     ("feed", $feed),
     ("since", $since),
     ("timeout", $timeout),
-    ("heartbeat", $heartbeat)
+    ("heartbeat", $heartbeat),
+    ("style", "all_docs"), 
   ]))
 
   castError req

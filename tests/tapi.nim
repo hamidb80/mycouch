@@ -27,7 +27,7 @@ template testAPI(name, body) {.dirty.} =
       body
     except CouchDBError as e:
       echo fmt"API Error: {e.responseCode}"
-      echo "details: ", e.info
+      echo "details: ", e.msg
       check false
 
 template createClient(cc): untyped =
@@ -99,6 +99,7 @@ suite "SERVER API [unit]":
     check "level" in req
 
   var lastValue: string
+
   testAPI "get node section config key":
     let req = cc.getNodeSectionKeyConfig(mainnode, "log", "level")
     check req.str in ["debug", "info", "notice", "warning", "warn", "error",
@@ -123,6 +124,7 @@ suite "DATABASE API":
     db1 = dbNames[0]
     pdb = "pdb" # partitioned db
 
+  # ---- in parallel
   createClient nc
   let dbChangeFeed = spawn nc.DBupdates(FVLongPoll, timeout = 5)
 
@@ -134,6 +136,7 @@ suite "DATABASE API":
     check dbNames.allIt dbs.contains(it)
     check cc.isDBexists(db1)
 
+  # FIXME not working in 3.3.2
   testAPI "db change feed":
     ## The existence of the "_global_changes" database is required to use this endpoint
     let res = ^dbChangeFeed
